@@ -16,8 +16,8 @@ export function LoginForm() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [email, setEmail] = useState('admin@cuecontroller.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isRedirecting, setIsRedirecting] = useState(false);
 
 
