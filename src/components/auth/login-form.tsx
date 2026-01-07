@@ -4,25 +4,45 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { doc, getDoc } from 'firebase/firestore';
 
 export function LoginForm() {
   const router = useRouter();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [email, setEmail] = useState('admin@cuecontroller.com');
   const [password, setPassword] = useState('password');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/dashboard');
+    if (!isUserLoading && user && firestore) {
+      setIsRedirecting(true);
+      const userDocRef = doc(firestore, 'staff', user.uid);
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          if (userData.role === 'admin') {
+            router.replace('/dashboard');
+          } else {
+            router.replace('/dashboard/tables');
+          }
+        } else {
+          // Fallback if user document doesn't exist
+          router.replace('/dashboard');
+        }
+      }).catch(() => {
+        // Handle error, maybe redirect to a generic page
+        router.replace('/dashboard');
+      });
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,7 +55,7 @@ export function LoginForm() {
     });
   };
 
-  if (isUserLoading || user) {
+  if (isUserLoading || user || isRedirecting) {
     return <div className="text-center">Loading...</div>;
   }
 
