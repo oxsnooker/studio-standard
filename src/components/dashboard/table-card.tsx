@@ -15,11 +15,13 @@ import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem } from '@/lib/types';
 import { Hourglass, Pause, Play, Square, UtensilsCrossed } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
+import { doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { mockProducts } from '@/lib/data';
 
 interface TableCardProps {
   table: BilliardTable;
-  onUpdate: (tableId: string, updates: Partial<BilliardTable>) => void;
-  onAddItem: (tableId: string, item: SessionItem) => void;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -29,9 +31,12 @@ const formatTime = (totalSeconds: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export function TableCard({ table, onUpdate, onAddItem }: TableCardProps) {
-  const [elapsedTime, setElapsedTime] = useState(table.elapsedTime);
+export function TableCard({ table }: TableCardProps) {
+  const [elapsedTime, setElapsedTime] = useState(table.elapsedTime || 0);
   const [isEndSessionOpen, setEndSessionOpen] = useState(false);
+  const firestore = useFirestore();
+
+  const tableRef = doc(firestore, 'tables', table.id);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -46,26 +51,65 @@ export function TableCard({ table, onUpdate, onAddItem }: TableCardProps) {
       }
     };
   }, [table.status]);
+  
+  useEffect(() => {
+    if (table.status === 'in-use') {
+        const timer = setInterval(() => {
+          const now = Date.now();
+          const elapsed = table.elapsedTime + Math.floor((now - (table.lastPausedTime || table.startTime)) / 1000);
+          updateDocumentNonBlocking(tableRef, { elapsedTime: elapsed });
+        }, 60000); // Update every minute to reduce writes
+        return () => clearInterval(timer);
+      }
+  }, [table.status, table.elapsedTime, table.startTime, table.lastPausedTime, tableRef]);
 
   useEffect(() => {
-    setElapsedTime(table.elapsedTime);
+    setElapsedTime(table.elapsedTime || 0);
   }, [table.elapsedTime]);
 
   const handleStart = () => {
-    onUpdate(table.id, { status: 'in-use', startTime: Date.now(), elapsedTime: 0, sessionItems: [] });
+    setDocumentNonBlocking(tableRef, {
+        status: 'in-use',
+        startTime: Date.now(),
+        elapsedTime: 0,
+        sessionItems: [],
+        lastPausedTime: null
+    }, { merge: true });
   };
 
   const handlePause = () => {
-    onUpdate(table.id, { status: 'paused', elapsedTime });
+    const now = Date.now();
+    const newElapsedTime = table.elapsedTime + Math.floor((now - (table.lastPausedTime ? table.startTime - table.lastPausedTime : table.startTime)) / 1000);
+    updateDocumentNonBlocking(tableRef, { 
+      status: 'paused',
+      elapsedTime: elapsedTime,
+      lastPausedTime: now,
+    });
   };
 
   const handleResume = () => {
-    onUpdate(table.id, { status: 'in-use' });
+    updateDocumentNonBlocking(tableRef, { 
+        status: 'in-use',
+        startTime: table.startTime + (Date.now() - table.lastPausedTime) // Adjust start time
+    });
   };
 
   const handleStop = () => {
-    onUpdate(table.id, { status: 'available', elapsedTime });
+    updateDocumentNonBlocking(tableRef, { status: 'available', elapsedTime: elapsedTime });
     setEndSessionOpen(true);
+  };
+  
+  const addSessionItem = (item: SessionItem) => {
+      if (!tableRef) return;
+      const existingItemIndex = table.sessionItems.findIndex(si => si.product.id === item.product.id);
+      let newSessionItems: SessionItem[];
+      if (existingItemIndex > -1) {
+        newSessionItems = [...table.sessionItems];
+        newSessionItems[existingItemIndex].quantity += item.quantity;
+      } else {
+        newSessionItems = [...(table.sessionItems || []), item];
+      }
+      updateDocumentNonBlocking(tableRef, { sessionItems: newSessionItems });
   };
 
   const getStatusBadge = () => {
@@ -124,7 +168,12 @@ export function TableCard({ table, onUpdate, onAddItem }: TableCardProps) {
               </Button>
             </>
           )}
-          <Button variant="secondary" className="col-span-2" disabled={table.status === 'available'}>
+          <Button 
+            variant="secondary" 
+            className="col-span-2" 
+            disabled={table.status === 'available'}
+            onClick={() => addSessionItem({ product: mockProducts[0], quantity: 1 })}
+        >
               <UtensilsCrossed className="mr-2 h-4 w-4" /> Add Items
           </Button>
         </CardFooter>
