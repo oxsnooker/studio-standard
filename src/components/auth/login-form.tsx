@@ -44,10 +44,23 @@ export function LoginForm() {
     }
   }, [user, isUserLoading, router, firestore]);
 
+  const handleLoginError = (error: any) => {
+    console.error("Login failed:", error);
+    let description = 'An unexpected error occurred.';
+    if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      description = 'Invalid email or password. Please try again.';
+    }
+    toast({
+      variant: 'destructive',
+      title: 'Login Failed',
+      description: description,
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!auth) return;
-    initiateEmailSignIn(auth, email, password);
+    initiateEmailSignIn(auth, email, password, handleLoginError);
     // Non-blocking call. We'll rely on the `useUser` hook to redirect.
     toast({
         title: 'Logging In...',
