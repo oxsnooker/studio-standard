@@ -1,3 +1,5 @@
+'use client';
+
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { DollarSign, LayoutGrid, Hourglass, TrendingUp } from "lucide-react";
 import {
