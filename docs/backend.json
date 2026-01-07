@@ -1,0 +1,515 @@
+{
+  "entities": {
+    "Table": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Table",
+      "type": "object",
+      "description": "Represents a snooker or billiard table in the club.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Table entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name or number of the table."
+        },
+        "hourlyPrice": {
+          "type": "number",
+          "description": "The hourly price for using the table."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description or notes about the table."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the table (e.g., 'available', 'in use', 'reserved', 'out of service')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "hourlyPrice",
+        "status"
+      ]
+    },
+    "Session": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Session",
+      "type": "object",
+      "description": "Represents a table session, tracking the time a table is in use.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Session entity."
+        },
+        "tableId": {
+          "type": "string",
+          "description": "Reference to Table. (Relationship: Table 1:N Session)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The date and time when the session started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The date and time when the session ended. Null if the session is still in progress.",
+          "format": "date-time"
+        },
+        "totalPrice": {
+          "type": "number",
+          "description": "The total price for the session."
+        },
+        "staffId": {
+          "type": "string",
+          "description": "Reference to Staff. (Relationship: Staff 1:N Session). The staff member who started the session."
+        }
+      },
+      "required": [
+        "id",
+        "tableId",
+        "startTime",
+        "staffId"
+      ]
+    },
+    "Bill": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bill",
+      "type": "object",
+      "description": "Represents a bill generated for a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Bill entity."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Reference to Session. (Relationship: Session 1:1 Bill). The table session associated with the bill."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Bill).  The customer associated with the bill."
+        },
+        "billDate": {
+          "type": "string",
+          "description": "The date the bill was generated.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount due on the bill."
+        },
+        "amountPaid": {
+          "type": "number",
+          "description": "The amount paid by the customer."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The payment method used (e.g., 'cash', 'UPI')."
+        },
+        "staffId": {
+          "type": "string",
+          "description": "Reference to Staff. (Relationship: Staff 1:N Bill). The staff member who processed the bill."
+        },
+        "productIds": {
+          "type": "array",
+          "description": "References to Products. (Relationship: Product N:N Bill)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "billDate",
+        "totalAmount",
+        "amountPaid",
+        "paymentMethod",
+        "staffId"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment made by a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Payment entity."
+        },
+        "billId": {
+          "type": "string",
+          "description": "Reference to Bill. (Relationship: Bill 1:N Payment). The bill associated with the payment."
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "The date the payment was made.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the payment."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The payment method used (e.g., 'cash', 'UPI')."
+        }
+      },
+      "required": [
+        "id",
+        "billId",
+        "paymentDate",
+        "amount",
+        "paymentMethod"
+      ]
+    },
+    "Membership": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Membership",
+      "type": "object",
+      "description": "Represents a membership plan for customers.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Membership entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the membership plan (e.g., 'Silver', 'Gold')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the membership plan."
+        },
+        "totalHours": {
+          "type": "number",
+          "description": "The total number of hours included in the membership plan."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the membership plan."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "totalHours",
+        "price"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer of the snooker club.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The phone number of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        },
+        "membershipId": {
+          "type": "string",
+          "description": "Reference to Membership. (Relationship: Membership 1:N Customer). The customer's membership plan, if any."
+        },
+        "remainingHours": {
+          "type": "number",
+          "description": "Remaining membership hours."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product (snack or drink) sold at the club.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the product."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the product (e.g., 'snack', 'drink')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "category"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense incurred by the club.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the expense.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the expense."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the expense (e.g., 'rent', 'electricity', 'salary', 'maintenance')."
+        },
+        "staffId": {
+          "type": "string",
+          "description": "Reference to Staff. (Relationship: Staff 1:N Expense). The staff member associated with the expense (e.g., salary payment)."
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "description",
+        "amount",
+        "category"
+      ]
+    },
+    "Staff": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Staff",
+      "type": "object",
+      "description": "Represents a staff member of the club.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Staff entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the staff member."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the staff member."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the staff member.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the staff member."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the staff member (e.g., 'admin', 'staff')."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "role"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/staff/{staffId}",
+        "definition": {
+          "entityName": "Staff",
+          "schema": {
+            "$ref": "#/backend/entities/Staff"
+          },
+          "description": "Stores staff member information.  Access is controlled by the user's own UID.",
+          "params": [
+            {
+              "name": "staffId",
+              "description": "The unique identifier of the staff member.  This matches the Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tables/{tableId}",
+        "definition": {
+          "entityName": "Table",
+          "schema": {
+            "$ref": "#/backend/entities/Table"
+          },
+          "description": "Stores information about each table.",
+          "params": [
+            {
+              "name": "tableId",
+              "description": "The unique identifier of the table."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sessions/{sessionId}",
+        "definition": {
+          "entityName": "Session",
+          "schema": {
+            "$ref": "#/backend/entities/Session"
+          },
+          "description": "Stores information about each session. Includes denormalized 'staffId' for authorization independence.",
+          "params": [
+            {
+              "name": "sessionId",
+              "description": "The unique identifier of the session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/bills/{billId}",
+        "definition": {
+          "entityName": "Bill",
+          "schema": {
+            "$ref": "#/backend/entities/Bill"
+          },
+          "description": "Stores information about each bill. Includes denormalized 'staffId' for authorization independence.",
+          "params": [
+            {
+              "name": "billId",
+              "description": "The unique identifier of the bill."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Stores information about each payment.",
+          "params": [
+            {
+              "name": "paymentId",
+              "description": "The unique identifier of the payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/memberships/{membershipId}",
+        "definition": {
+          "entityName": "Membership",
+          "schema": {
+            "$ref": "#/backend/entities/Membership"
+          },
+          "description": "Stores information about each membership.",
+          "params": [
+            {
+              "name": "membershipId",
+              "description": "The unique identifier of the membership."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores information about each customer.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier of the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores information about each product.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique identifier of the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores information about each expense. Includes denormalized 'staffId' for authorization independence.",
+          "params": [
+            {
+              "name": "expenseId",
+              "description": "The unique identifier of the expense."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the Cue Controller application, prioritizing security, scalability, and ease of debugging. It incorporates role-based access control and denormalization techniques to optimize rule simplicity and data integrity.\n\n**Authorization Independence (CRITICAL):**\nTo avoid hierarchical authorization dependencies, the design denormalizes authorization context, storing necessary attributes within subcollections. For example, to determine if a staff member can modify a session, the staffId is copied into the sessions documents. This denormalization avoids the need for `get()` calls in security rules, allowing atomic operations and easier debugging. For collaborative data, the 'Staff' entity `role` field is leveraged, allowing staff-specific rules without complex `get()` calls.\n\n**Structural Segregation:**\nThe database segregates data based on access requirements. Staff and admin data is stored in the `staff` collection.  Other data, such as `tables`, `sessions`, and `products`, have uniform security postures.\n\n**Access Modeling:**\n*   **Staff:** Staff data is stored in the `/staff/{staffId}` collection, enabling path-based ownership and simple read/write rules based on `request.auth.uid`.\n*   **Sessions:** Sessions are stored in the `/sessions/{sessionId}` collection.  The `staffId` field facilitates filtering sessions based on the staff member who started them.\n\n**QAPs (Rules are not Filters):**\nThe structure is optimized to prevent filtering operations within security rules. By storing related data in a flat structure with denormalized authorization fields, list operations can be secured without complex filtering.  For example, listing sessions can be secured by checking if the requesting user's `uid` matches the `staffId` in the session document.\n\n**Invariants:**\nThe structure supports data integrity through careful consideration of ownership, timestamps, and denormalized data.  Timestamps within the `Session` and `Bill` entities are maintained to track history, and the `staffId` is maintained across related entities to ensure consistent ownership and authorization."
+  }
+}

@@ -1,0 +1,222 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Core Philosophy: This ruleset enforces a strict role-based access control model
+     * centered around 'staff' users. Authenticated users with a valid document in the
+     * '/staff' collection are granted privileges to manage the club's business
+     * data (tables, sessions, customers, etc.). Non-staff users have no access.
+     * A staff member's own profile document is private and can only be managed by them.
+     *
+     * Data Structure: The data is organized into flat, top-level collections. There
+     * are no user-specific subcollections, except for the implicit ownership of a staff
+     * member's own document in the '/staff' collection. This flat structure is
+     * designed for simple, performant queries by the staff-facing application.
+     *
+     * Key Security Decisions:
+     * - Default Deny: All access is denied by default. Rules explicitly grant access.
+     * - Staff Role Check: Most operations require a check to see if the requesting
+     *   user has a 'staff' or 'admin' role in their own /staff/{userId} document.
+     *   This is the primary authorization gate for the entire system.
+     * - Staff Profile Privacy: Staff members cannot list or view each other's profiles,
+     *   ensuring personal data privacy. They can only create and manage their own.
+     * - No Public Access: There are no publicly readable collections.
+     *
+     * Denormalization for Authorization: The `staffId` field is denormalized onto key
+     * transactional documents like `sessions`, `bills`, and `expenses`. On creation,
+     * rules enforce that this `staffId` matches the creator's user ID. For updates,
+     * this field is made immutable to preserve the audit trail. While any staff
+     * member can manage these documents after creation, this preserves the record
+     * of who initiated the action.
+     *
+     * Structural Segregation: Staff profiles are segregated into the `/staff` collection,
+     * which has a strict ownership security model. All other business-related
+     * collections (`/tables`, `/sessions`, etc.) share a common "staff-only" access model.
+     */
+
+    // --------------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the foundation for document ownership rules.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if the user is a registered staff member or admin by looking up their
+     * role in the /staff collection. This is the primary gate for all business logic.
+     */
+    function isStaff() {
+      return isSignedIn() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role in ['staff', 'admin'];
+    }
+
+    /**
+     * A specific check for update/delete operations to ensure the document exists
+     * and the user is an authorized staff member.
+     */
+    function canManageBusinessData() {
+      return isStaff() && resource != null;
+    }
+
+
+    // --------------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------------
+
+    /**
+     * @description Manages staff member profiles. A staff member can create their own profile
+     * and manage it, but cannot see or edit anyone else's profile.
+     * @path /staff/{staffId}
+     * @allow (create) a new user creating their own staff document.
+     * @deny (get) a staff member trying to read another staff member's document.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /staff/{staffId} {
+      allow get: if isOwner(staffId);
+      allow list: if false;
+      allow create: if isOwner(staffId) && request.resource.data.id == staffId;
+      allow update: if isOwner(staffId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(staffId) && resource != null;
+    }
+
+    /**
+     * @description Manages the club's snooker and billiard tables. Any registered
+     * staff member can create, view, and manage table information.
+     * @path /tables/{tableId}
+     * @allow (create) an authenticated staff member adding a new table.
+     * @deny (create) an anonymous or non-staff user trying to add a table.
+     * @principle Enforces role-based access for business data management.
+     */
+    match /tables/{tableId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff();
+      allow update: if canManageBusinessData();
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages active and past table sessions. Any staff member can manage
+     * sessions, but the initial creator's ID is immutably stored.
+     * @path /sessions/{sessionId}
+     * @allow (create) a staff member starting a new session, correctly setting their own `staffId`.
+     * @deny (create) a staff member trying to start a session on behalf of another staff member.
+     * @principle Enforces relational integrity and role-based access.
+     */
+    match /sessions/{sessionId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff() && request.resource.data.staffId == request.auth.uid;
+      allow update: if canManageBusinessData() && request.resource.data.staffId == resource.data.staffId;
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages customer bills. Any staff member can manage bills, but the
+     * initial creator's ID is immutably stored for auditing.
+     * @path /bills/{billId}
+     * @allow (update) any staff member updating an existing bill's total amount.
+     * @deny (update) a staff member trying to change the `staffId` on an existing bill.
+     * @principle Enforces relational integrity and role-based access.
+     */
+    match /bills/{billId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff() && request.resource.data.staffId == request.auth.uid;
+      allow update: if canManageBusinessData() && request.resource.data.staffId == resource.data.staffId;
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages payments associated with bills. Any staff member can
+     * create or view payments.
+     * @path /payments/{paymentId}
+     * @allow (create) any authenticated staff member to log a payment.
+     * @deny (list) any non-staff user from listing payments.
+     * @principle Enforces role-based access for business data management.
+     */
+    match /payments/{paymentId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff();
+      allow update: if canManageBusinessData();
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages club membership plans. Any registered staff member can
+     * create, view, and manage membership information.
+     * @path /memberships/{membershipId}
+     * @allow (create) an authenticated staff member adding a new membership tier.
+     * @deny (delete) an anonymous or non-staff user trying to delete a plan.
+     * @principle Enforces role-based access for business data management.
+     */
+    match /memberships/{membershipId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff();
+      allow update: if canManageBusinessData();
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages customer profiles. Any registered staff member can
+     * create, view, and manage customer data.
+     * @path /customers/{customerId}
+     * @allow (get) an authenticated staff member retrieving a customer's details.
+     * @deny (get) a non-staff user trying to access customer information.
+     * @principle Enforces role-based access for business data management.
+     */
+    match /customers/{customerId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff();
+      allow update: if canManageBusinessData();
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages products (e.g., snacks, drinks) sold at the club. Any
+     * registered staff member can manage the product catalog.
+     * @path /products/{productId}
+     * @allow (list) an authenticated staff member listing all available products.
+     * @deny (create) a non-staff user trying to add a new product.
+     * @principle Enforces role-based access for business data management.
+     */
+    match /products/{productId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff();
+      allow update: if canManageBusinessData();
+      allow delete: if canManageBusinessData();
+    }
+
+    /**
+     * @description Manages club expenses. Any staff member can manage expenses,
+     * but the creator's ID is immutably stored for auditing.
+     * @path /expenses/{expenseId}
+     * @allow (create) a staff member logging a new expense, correctly setting their own `staffId`.
+     * @deny (create) a staff member trying to log an expense on behalf of another staff member.
+     * @principle Enforces relational integrity and role-based access.
+     */
+    match /expenses/{expenseId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create: if isStaff() && request.resource.data.staffId == request.auth.uid;
+      allow update: if canManageBusinessData() && request.resource.data.staffId == resource.data.staffId;
+      allow delete: if canManageBusinessData();
+    }
+  }
+}
