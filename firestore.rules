@@ -93,7 +93,7 @@ service cloud.firestore {
      */
     match /staff/{staffId} {
       allow get: if isOwner(staffId) || isAdmin();
-      allow list: if isStaff();
+      allow list: if isSignedIn();
       allow create: if isOwner(staffId) && request.resource.data.id == staffId;
       allow update: if isOwner(staffId) && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if (isAdmin() || isOwner(staffId)) && resource != null;
