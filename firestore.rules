@@ -59,14 +59,14 @@ service cloud.firestore {
      * role in the /staff collection. This is the primary gate for all business logic.
      */
     function isStaff() {
-      return isSignedIn() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role in ['staff', 'admin'];
+      return isSignedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
 
     /**
      * Checks if the user is a registered admin.
      */
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
+      return isStaff() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
@@ -87,16 +87,16 @@ service cloud.firestore {
      * and manage it, but cannot see or edit anyone else's profile. Admins can list all staff.
      * @path /staff/{staffId}
      * @allow (get) a staff member reading their own document.
-     * @allow (list) an admin listing all staff members for management.
+     * @allow (list) an admin or staff member listing all staff members for management.
      * @deny (list) a non-admin staff member trying to list other staff.
      * @principle Restricts access to a user's own data, with an exception for admins.
      */
     match /staff/{staffId} {
       allow get: if isOwner(staffId) || isAdmin();
-      allow list: if isAdmin();
+      allow list: if isStaff();
       allow create: if isOwner(staffId) && request.resource.data.id == staffId;
       allow update: if isOwner(staffId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(staffId) && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
