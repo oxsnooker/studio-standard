@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { useCollection, useFirestore, useAuth, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import {
   Table,
   TableBody,
@@ -35,6 +35,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -50,7 +57,6 @@ interface StaffMember {
 
 export default function StaffPage() {
     const firestore = useFirestore();
-    const mainAuth = useAuth(); // The main auth instance
     const { toast } = useToast();
 
     const [isStaffDialogOpen, setStaffDialogOpen] = useState(false);
@@ -61,6 +67,7 @@ export default function StaffPage() {
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState<'staff' | 'admin'>('staff');
 
     const staffQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -74,6 +81,7 @@ export default function StaffPage() {
             setFirstName(staffMember.firstName);
             setLastName(staffMember.lastName);
             setEmail(staffMember.email);
+            setRole(staffMember.role);
             setPassword(''); // Don't show password on edit
         } else {
             setEditingStaff(null);
@@ -81,6 +89,7 @@ export default function StaffPage() {
             setLastName('');
             setEmail('');
             setPassword('');
+            setRole('staff');
         }
         setStaffDialogOpen(true);
     };
@@ -94,6 +103,7 @@ export default function StaffPage() {
             updateDocumentNonBlocking(staffRef, {
                 firstName,
                 lastName,
+                role,
                 // Email/auth credentials are not updated here for simplicity
             });
             toast({ title: 'Staff Updated', description: `${firstName} ${lastName}'s details have been updated.` });
@@ -113,15 +123,15 @@ export default function StaffPage() {
 
                 // Create staff document in Firestore
                 const staffRef = doc(firestore, 'staff', user.uid);
-                const newStaff: Omit<StaffMember, 'id'> & { id: string } = {
+                const newStaff: StaffMember = {
                     id: user.uid,
                     firstName,
                     lastName,
                     email,
-                    role: 'staff',
+                    role,
                 };
                 // Use a blocking set here to ensure the doc is created after auth user
-                await addDocumentNonBlocking(collection(firestore, 'staff'), newStaff);
+                await setDoc(staffRef, newStaff);
 
                 toast({ title: 'Staff Created', description: `Account for ${firstName} ${lastName} has been created.` });
 
@@ -254,6 +264,18 @@ export default function StaffPage() {
                         <Input id="staff-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
                     </div>
                 )}
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="staff-role" className="text-right">Role</Label>
+                    <Select onValueChange={(value: 'staff' | 'admin') => setRole(value)} value={role}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <DialogFooter>
                 <Button type="button" variant="secondary" onClick={() => setStaffDialogOpen(false)}>Cancel</Button>
