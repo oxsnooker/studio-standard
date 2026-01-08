@@ -111,7 +111,7 @@ service cloud.firestore {
       allow get: if isStaff();
       allow list: if isStaff();
       allow create: if isStaff();
-      allow update: if canManageBusinessData();
+      allow update: if isStaff();
       allow delete: if canManageBusinessData();
     }
 
@@ -207,7 +207,7 @@ service cloud.firestore {
       allow get: if isStaff();
       allow list: if isStaff();
       allow create: if isStaff();
-      allow update: if canManageBusinessData();
+      allow update: if isStaff();
       allow delete: if canManageBusinessData();
     }
 

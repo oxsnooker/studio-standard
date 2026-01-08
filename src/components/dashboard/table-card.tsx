@@ -42,14 +42,18 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const tableRef = doc(firestore, 'tables', table.id);
+  const tableRef = useMemo(() => {
+    if(!firestore) return null;
+    return doc(firestore, 'tables', table.id);
+  }, [firestore, table.id]);
+
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (table.status === 'in-use') {
+    if (table.status === 'in-use' && table.startTime) {
       // Calculate elapsed time since start time and update state
       const initialElapsed = Math.floor((Date.now() - table.startTime) / 1000);
-      setElapsedTime(table.elapsedTime + initialElapsed);
+      setElapsedTime((table.elapsedTime || 0) + initialElapsed);
 
       interval = setInterval(() => {
         setElapsedTime((prev) => prev + 1);
@@ -64,11 +68,8 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     };
   }, [table.status, table.startTime, table.elapsedTime]);
 
-  useEffect(() => {
-    setElapsedTime(table.elapsedTime || 0);
-  }, [table.elapsedTime]);
-
   const handleStart = () => {
+    if (!tableRef) return;
     setDocumentNonBlocking(tableRef, {
         status: 'in-use',
         startTime: Date.now(),
@@ -80,9 +81,10 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
 
   const handlePause = () => {
+    if (!tableRef) return;
     const now = Date.now();
     const elapsedSinceStart = table.startTime ? Math.floor((now - table.startTime) / 1000) : 0;
-    const newElapsedTime = table.elapsedTime + elapsedSinceStart;
+    const newElapsedTime = (table.elapsedTime || 0) + elapsedSinceStart;
     
     updateDocumentNonBlocking(tableRef, { 
       status: 'paused',
@@ -94,6 +96,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
 
   const handleResume = () => {
+    if (!tableRef) return;
     updateDocumentNonBlocking(tableRef, { 
         status: 'in-use',
         startTime: Date.now(), // Set new start time for current running segment
@@ -108,7 +111,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
   
   const handleSessionEnd = async (bill: Omit<Bill, 'id'>) => {
-    if (!firestore) return;
+    if (!firestore || !tableRef) return;
 
     try {
       await runTransaction(firestore, async (transaction) => {
@@ -197,7 +200,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         return (table.elapsedTime || 0) + elapsedSinceStart;
     }
     return table.elapsedTime || 0;
-  }, [table.status, table.startTime, table.elapsedTime]);
+  }, [table.status, table.startTime, table.elapsedTime, elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
   const tableBill = table.status !== 'available' ? (currentElapsedTime / 3600 * table.hourlyRate) : 0;
