@@ -5,8 +5,8 @@ import type { Membership, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import {
   Table,
   TableBody,
@@ -23,6 +23,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import {
   Tabs,
   TabsContent,
@@ -47,6 +58,8 @@ export default function MembershipsPage() {
 
     // State for plans
     const [isPlanDialogOpen, setPlanDialogOpen] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<Membership | null>(null);
+    const [deletingPlan, setDeletingPlan] = useState<Membership | null>(null);
     const [newPlanName, setNewPlanName] = useState('');
     const [newPlanDescription, setNewPlanDescription] = useState('');
     const [newPlanHours, setNewPlanHours] = useState('');
@@ -54,6 +67,8 @@ export default function MembershipsPage() {
 
     // State for customers
     const [isCustomerDialogOpen, setCustomerDialogOpen] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+    const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
     const [newCustomerFirstName, setNewCustomerFirstName] = useState('');
     const [newCustomerLastName, setNewCustomerLastName] = useState('');
     const [newCustomerPhone, setNewCustomerPhone] = useState('');
@@ -75,45 +90,89 @@ export default function MembershipsPage() {
     }, [firestore]);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
 
-    const handleAddPlan = () => {
-        if (!firestore || !newPlanName || !newPlanHours || !newPlanPrice) return;
+    const handleAddOrUpdatePlan = () => {
+        if (!firestore) return;
         
-        const plansCollection = collection(firestore, 'memberships');
-        const newPlan: Omit<Membership, 'id'> = {
-            name: newPlanName,
-            description: newPlanDescription,
-            totalHours: Number(newPlanHours),
-            price: Number(newPlanPrice),
-        };
-        addDocumentNonBlocking(plansCollection, newPlan);
+        if (editingPlan) {
+            // Update
+            const planRef = doc(firestore, 'memberships', editingPlan.id);
+            updateDocumentNonBlocking(planRef, {
+                name: newPlanName,
+                description: newPlanDescription,
+                totalHours: Number(newPlanHours),
+                price: Number(newPlanPrice),
+            });
+        } else {
+            // Add
+            const plansCollection = collection(firestore, 'memberships');
+            const newPlan: Omit<Membership, 'id'> = {
+                name: newPlanName,
+                description: newPlanDescription,
+                totalHours: Number(newPlanHours),
+                price: Number(newPlanPrice),
+            };
+            addDocumentNonBlocking(plansCollection, newPlan);
+        }
         
         setPlanDialogOpen(false);
+        setEditingPlan(null);
         setNewPlanName('');
         setNewPlanDescription('');
         setNewPlanHours('');
         setNewPlanPrice('');
     };
 
-    const handleAddCustomer = () => {
-        if (!firestore || !newCustomerFirstName || !newCustomerLastName) return;
+    const openPlanDialog = (plan?: Membership) => {
+        if (plan) {
+            setEditingPlan(plan);
+            setNewPlanName(plan.name);
+            setNewPlanDescription(plan.description);
+            setNewPlanHours(String(plan.totalHours));
+            setNewPlanPrice(String(plan.price));
+        } else {
+            setEditingPlan(null);
+            setNewPlanName('');
+            setNewPlanDescription('');
+            setNewPlanHours('');
+            setNewPlanPrice('');
+        }
+        setPlanDialogOpen(true);
+    };
 
-        const customersCollection = collection(firestore, 'customers');
-        
+    const handleDeletePlan = () => {
+        if (!firestore || !deletingPlan) return;
+        const planRef = doc(firestore, 'memberships', deletingPlan.id);
+        deleteDocumentNonBlocking(planRef);
+        setDeletingPlan(null);
+    }
+
+    const handleAddOrUpdateCustomer = () => {
+        if (!firestore) return;
+
         const isMembershipSelected = newCustomerMembershipId && newCustomerMembershipId !== 'none';
+        const plan = plans?.find(p => p.id === newCustomerMembershipId);
         
-        const newCustomer: Omit<Customer, 'id'> = {
+        const customerData: Omit<Customer, 'id'> & {id?: string} = {
             firstName: newCustomerFirstName,
             lastName: newCustomerLastName,
             phone: newCustomerPhone,
             email: newCustomerEmail,
             membershipId: isMembershipSelected ? newCustomerMembershipId : null,
-            remainingHours: isMembershipSelected ? (plans?.find(p => p.id === newCustomerMembershipId)?.totalHours || 0) : 0,
+            remainingHours: isMembershipSelected ? (plan?.totalHours || 0) : 0,
             validFrom: newCustomerValidFrom,
             validTill: newCustomerValidTill,
         }
-        addDocumentNonBlocking(customersCollection, newCustomer);
+
+        if(editingCustomer) {
+            const customerRef = doc(firestore, 'customers', editingCustomer.id);
+            updateDocumentNonBlocking(customerRef, customerData);
+        } else {
+            const customersCollection = collection(firestore, 'customers');
+            addDocumentNonBlocking(customersCollection, customerData);
+        }
 
         setCustomerDialogOpen(false);
+        setEditingCustomer(null);
         setNewCustomerFirstName('');
         setNewCustomerLastName('');
         setNewCustomerPhone('');
@@ -121,6 +180,36 @@ export default function MembershipsPage() {
         setNewCustomerMembershipId('');
         setNewCustomerValidFrom('');
         setNewCustomerValidTill('');
+    }
+
+    const openCustomerDialog = (customer?: Customer) => {
+        if (customer) {
+            setEditingCustomer(customer);
+            setNewCustomerFirstName(customer.firstName);
+            setNewCustomerLastName(customer.lastName);
+            setNewCustomerPhone(customer.phone);
+            setNewCustomerEmail(customer.email);
+            setNewCustomerMembershipId(customer.membershipId || 'none');
+            setNewCustomerValidFrom(customer.validFrom || '');
+            setNewCustomerValidTill(customer.validTill || '');
+        } else {
+            setEditingCustomer(null);
+            setNewCustomerFirstName('');
+            setNewCustomerLastName('');
+            setNewCustomerPhone('');
+            setNewCustomerEmail('');
+            setNewCustomerMembershipId('');
+            setNewCustomerValidFrom('');
+            setNewCustomerValidTill('');
+        }
+        setCustomerDialogOpen(true);
+    }
+
+    const handleDeleteCustomer = () => {
+        if (!firestore || !deletingCustomer) return;
+        const customerRef = doc(firestore, 'customers', deletingCustomer.id);
+        deleteDocumentNonBlocking(customerRef);
+        setDeletingCustomer(null);
     }
 
     const getPlanName = (planId: string | null) => {
@@ -141,7 +230,7 @@ export default function MembershipsPage() {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle>All Membership Plans</CardTitle>
-                            <Button onClick={() => setPlanDialogOpen(true)}>
+                            <Button onClick={() => openPlanDialog()}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Create Plan
                             </Button>
                         </div>
@@ -177,14 +266,30 @@ export default function MembershipsPage() {
                                             <TableCell>{plan.totalHours} hours</TableCell>
                                             <TableCell>${plan.price.toFixed(2)}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" onClick={() => openPlanDialog(plan)}>
                                                     <Pencil className="h-4 w-4" />
                                                     <span className="sr-only">Edit</span>
                                                 </Button>
-                                                <Button variant="ghost" size="icon">
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                    <span className="sr-only">Delete</span>
-                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => setDeletingPlan(plan)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                            <span className="sr-only">Delete</span>
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the "{deletingPlan?.name}" plan.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel onClick={() => setDeletingPlan(null)}>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeletePlan}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -200,7 +305,7 @@ export default function MembershipsPage() {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle>All Customers</CardTitle>
-                            <Button onClick={() => setCustomerDialogOpen(true)}>
+                            <Button onClick={() => openCustomerDialog()}>
                                 <UserPlus className="mr-2 h-4 w-4" /> Add Customer
                             </Button>
                         </div>
@@ -245,14 +350,30 @@ export default function MembershipsPage() {
                                             <TableCell>{customer.validFrom ? format(new Date(customer.validFrom), "PPP") : 'N/A'}</TableCell>
                                             <TableCell>{customer.validTill ? format(new Date(customer.validTill), "PPP") : 'N/A'}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" onClick={() => openCustomerDialog(customer)}>
                                                     <Pencil className="h-4 w-4" />
                                                     <span className="sr-only">Edit</span>
                                                 </Button>
-                                                <Button variant="ghost" size="icon">
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                    <span className="sr-only">Delete</span>
-                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => setDeletingCustomer(customer)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                            <span className="sr-only">Delete</span>
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                     <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete customer "{deletingCustomer?.firstName} {deletingCustomer?.lastName}".
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel onClick={() => setDeletingCustomer(null)}>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeleteCustomer}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -265,13 +386,13 @@ export default function MembershipsPage() {
             </TabsContent>
         </Tabs>
 
-        {/* Create Plan Dialog */}
+        {/* Create/Edit Plan Dialog */}
         <Dialog open={isPlanDialogOpen} onOpenChange={setPlanDialogOpen}>
             <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-                <DialogTitle>Create New Membership Plan</DialogTitle>
+                <DialogTitle>{editingPlan ? 'Edit' : 'Create New'} Membership Plan</DialogTitle>
                 <DialogDescription>
-                Enter the details for the new plan. Click save when you're done.
+                Enter the details for the plan. Click save when you're done.
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -293,19 +414,19 @@ export default function MembershipsPage() {
                 </div>
             </div>
             <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => setPlanDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" onClick={handleAddPlan}>Save Plan</Button>
+                <Button type="button" variant="secondary" onClick={() => { setPlanDialogOpen(false); setEditingPlan(null); }}>Cancel</Button>
+                <Button type="submit" onClick={handleAddOrUpdatePlan}>Save Plan</Button>
             </DialogFooter>
             </DialogContent>
         </Dialog>
 
-        {/* Add Customer Dialog */}
+        {/* Add/Edit Customer Dialog */}
         <Dialog open={isCustomerDialogOpen} onOpenChange={setCustomerDialogOpen}>
             <DialogContent className="sm:max-w-md">
             <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogTitle>{editingCustomer ? 'Edit' : 'Add New'} Customer</DialogTitle>
                 <DialogDescription>
-                Enter the details for the new customer. Click save when you're done.
+                Enter the details for the customer. Click save when you're done.
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -363,8 +484,8 @@ export default function MembershipsPage() {
                 </div>
             </div>
             <DialogFooter>
-                <Button type="button" variant="secondary" onClick={() => setCustomerDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" onClick={handleAddCustomer}>Save Customer</Button>
+                <Button type="button" variant="secondary" onClick={() => { setCustomerDialogOpen(false); setEditingCustomer(null); }}>Cancel</Button>
+                <Button type="submit" onClick={handleAddOrUpdateCustomer}>Save Customer</Button>
             </DialogFooter>
             </DialogContent>
         </Dialog>
