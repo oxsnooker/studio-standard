@@ -11,7 +11,9 @@ export default function StaffPage() {
 
   const tablesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'tables'), orderBy('createdAt', 'asc'));
+    // Temporarily reverted to a simpler query.
+    // The orderBy clause requires a Firestore index.
+    return query(collection(firestore, 'tables'));
   }, [firestore]);
 
   const { data: tables, isLoading } = useCollection<BilliardTable>(tablesQuery);
@@ -22,7 +24,9 @@ export default function StaffPage() {
   };
   
   const sortedTables = useMemo(() => {
-    return tables?.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    // Sort client-side for now
+    if (!tables) return [];
+    return [...tables].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   }, [tables]);
 
   return (
