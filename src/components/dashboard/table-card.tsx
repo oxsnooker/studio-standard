@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
-import { Hourglass, Pause, Play, Square, UtensilsCrossed, Trash2 } from 'lucide-react';
+import { Hourglass, Pause, Play, Square, UtensilsCrossed, Trash2, FileText } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
 import { doc, collection, runTransaction } from 'firebase/firestore';
@@ -103,7 +103,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     onSessionChange?.();
   };
 
-  const handleStop = () => {
+  const handleOpenBillDialog = () => {
     // Don't change status here. Change it after payment is confirmed.
     setEndSessionOpen(true);
   };
@@ -188,7 +188,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
       case 'in-use':
         return <Badge className="bg-green-600 text-white">In Use</Badge>;
       case 'paused':
-        return <Badge variant="destructive">Paused</Badge>;
+        return <Badge variant="destructive">Stopped</Badge>;
     }
   };
 
@@ -252,22 +252,17 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             </Button>
           )}
           {table.status === 'in-use' && (
-            <>
-              <Button onClick={handlePause} variant="outline">
-                <Pause className="mr-2 h-4 w-4" /> Pause
+              <Button onClick={handlePause} variant="outline" className='col-span-2'>
+                <Pause className="mr-2 h-4 w-4" /> Stop Timer
               </Button>
-              <Button onClick={handleStop} variant="destructive">
-                <Square className="mr-2 h-4 w-4" /> Stop
-              </Button>
-            </>
           )}
           {table.status === 'paused' && (
             <>
               <Button onClick={handleResume}>
                 <Play className="mr-2 h-4 w-4" /> Resume
               </Button>
-              <Button onClick={handleStop} variant="destructive">
-                <Square className="mr-2 h-4 w-4" /> Stop
+              <Button onClick={handleOpenBillDialog} variant="destructive">
+                <FileText className="mr-2 h-4 w-4" /> Generate Bill
               </Button>
             </>
           )}
