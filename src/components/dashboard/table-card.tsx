@@ -194,10 +194,10 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   const currentElapsedTime = useMemo(() => {
     if (table.status === 'in-use' && table.startTime) {
         const elapsedSinceStart = Math.floor((Date.now() - table.startTime) / 1000);
-        return table.elapsedTime + elapsedSinceStart;
+        return (table.elapsedTime || 0) + elapsedSinceStart;
     }
     return table.elapsedTime || 0;
-  }, [table.status, table.startTime, table.elapsedTime, elapsedTime]);
+  }, [table.status, table.startTime, table.elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
   const tableBill = table.status !== 'available' ? (currentElapsedTime / 3600 * table.hourlyRate) : 0;
@@ -269,7 +269,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
                 <Play className="mr-2 h-4 w-4" /> Resume
               </Button>
               <Button onClick={handleOpenBillDialog} variant="destructive">
-                <FileText className="mr-2 h-4 w-4" /> Generate Bill
+                <FileText className="mr-2 h-4 w-4" /> Close
               </Button>
             </>
           )}
