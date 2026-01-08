@@ -95,13 +95,16 @@ export default function MembershipsPage() {
         if (!firestore || !newCustomerFirstName || !newCustomerLastName) return;
 
         const customersCollection = collection(firestore, 'customers');
+        
+        const isMembershipSelected = newCustomerMembershipId && newCustomerMembershipId !== 'none';
+        
         const newCustomer: Omit<Customer, 'id'> = {
             firstName: newCustomerFirstName,
             lastName: newCustomerLastName,
             phone: newCustomerPhone,
             email: newCustomerEmail,
-            membershipId: newCustomerMembershipId || null,
-            remainingHours: plans?.find(p => p.id === newCustomerMembershipId)?.totalHours || 0,
+            membershipId: isMembershipSelected ? newCustomerMembershipId : null,
+            remainingHours: isMembershipSelected ? (plans?.find(p => p.id === newCustomerMembershipId)?.totalHours || 0) : 0,
         }
         addDocumentNonBlocking(customersCollection, newCustomer);
 
@@ -318,7 +321,7 @@ export default function MembershipsPage() {
                             <SelectValue placeholder="Select a plan (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">No Membership</SelectItem>
+                            <SelectItem value="none">No Membership</SelectItem>
                             {plans?.map(plan => (
                                 <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
                             ))}
