@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { BilliardTable } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { TableCard } from '@/components/dashboard/table-card';
 
 export default function StaffPage() {
@@ -11,7 +11,7 @@ export default function StaffPage() {
 
   const tablesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return collection(firestore, 'tables');
+    return query(collection(firestore, 'tables'), orderBy('createdAt', 'asc'));
   }, [firestore]);
 
   const { data: tables, isLoading } = useCollection<BilliardTable>(tablesQuery);
@@ -20,6 +20,10 @@ export default function StaffPage() {
   const handleSessionChange = () => {
     setSessionChangeCounter(prev => prev + 1);
   };
+  
+  const sortedTables = useMemo(() => {
+    return tables?.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  }, [tables]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -30,9 +34,9 @@ export default function StaffPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading
           ? [...Array(6)].map((_, i) => (
-              <div key={i} className="h-[350px] w-full animate-pulse rounded-lg bg-card" />
+              <div key={i} className="h-[450px] w-full animate-pulse rounded-lg bg-card" />
             ))
-          : tables?.map(table => (
+          : sortedTables?.map(table => (
               <TableCard key={table.id} table={table} onSessionChange={handleSessionChange} />
             ))}
       </div>

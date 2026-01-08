@@ -32,6 +32,7 @@ export interface BilliardTable {
   elapsedTime: number; // in seconds
   sessionItems: SessionItem[];
   lastPausedTime?: number | null;
+  createdAt?: number;
 }
 
 export interface Membership {

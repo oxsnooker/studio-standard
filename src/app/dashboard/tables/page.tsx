@@ -100,6 +100,7 @@ export default function TablesPage() {
         elapsedTime: 0,
         startTime: 0,
         sessionItems: [],
+        createdAt: Date.now(), // Add creation timestamp
       };
       addDocumentNonBlocking(tablesCollection, newTable);
       toast({ title: 'Table Created', description: `The "${tableName}" table has been created.` });
