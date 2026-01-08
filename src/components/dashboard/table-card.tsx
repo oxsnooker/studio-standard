@@ -16,7 +16,7 @@ import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
 import { Hourglass, Pause, Play, Square, UtensilsCrossed } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, runTransaction } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
@@ -106,28 +106,53 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     setEndSessionOpen(true);
   };
   
-  const handleSessionEnd = (bill: Omit<Bill, 'id'>) => {
+  const handleSessionEnd = async (bill: Omit<Bill, 'id'>) => {
     if (!firestore) return;
-    
-    // 1. Save the bill
-    const billsCollection = collection(firestore, 'bills');
-    addDocumentNonBlocking(billsCollection, bill);
 
-    // 2. Reset the table
-    updateDocumentNonBlocking(tableRef, { 
-        status: 'available', 
-        elapsedTime: 0,
-        startTime: 0,
-        sessionItems: [],
-        lastPausedTime: null,
-    });
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        // 1. Save the bill
+        const billsCollection = collection(firestore, 'bills');
+        const newBillRef = doc(billsCollection); // Create a new ref for the bill
+        transaction.set(newBillRef, bill);
 
-    toast({
+        // 2. Update stock for each item
+        for (const item of bill.sessionItems) {
+          const productRef = doc(firestore, 'products', item.product.id);
+          const productDoc = await transaction.get(productRef);
+          if (!productDoc.exists()) {
+            throw new Error(`Product ${item.product.name} not found!`);
+          }
+          const currentStock = productDoc.data().stock;
+          const newStock = currentStock - item.quantity;
+          transaction.update(productRef, { stock: newStock });
+        }
+
+        // 3. Reset the table
+        transaction.update(tableRef, {
+          status: 'available',
+          elapsedTime: 0,
+          startTime: 0,
+          sessionItems: [],
+          lastPausedTime: null,
+        });
+      });
+
+      toast({
         title: "Session Completed",
-        description: `Bill for ${table.name} has been finalized.`,
-    });
-    
-    onSessionChange?.();
+        description: `Bill for ${table.name} has been finalized and stock updated.`,
+      });
+
+      onSessionChange?.();
+
+    } catch (error: any) {
+      console.error("Session end transaction failed: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Ending Session",
+        description: error.message || "Could not finalize the bill or update stock.",
+      });
+    }
   }
 
   const handleAddItem = (item: SessionItem) => {
