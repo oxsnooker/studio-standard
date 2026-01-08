@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Cue Controller',
+  title: 'THE OX SNOOKER',
   description: 'A Snooker & Billiards Club Management Website',
 };
 

@@ -10,7 +10,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4">
             <Logo />
           </div>
-          <CardTitle className="font-headline text-3xl">Welcome to Cue Controller</CardTitle>
+          <CardTitle className="font-headline text-3xl">Welcome to THE OX SNOOKER</CardTitle>
         </CardHeader>
         <CardContent>
           <LoginForm />

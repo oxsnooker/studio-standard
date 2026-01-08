@@ -86,7 +86,7 @@ export function LoginForm() {
         <Input 
             id="email" 
             type="email" 
-            placeholder="admin@cuecontroller.com" 
+            placeholder="admin@theoxsnooker.com" 
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)}

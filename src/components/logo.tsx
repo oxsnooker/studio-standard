@@ -7,7 +7,7 @@ export function Logo({ className }: { className?: string }) {
         <div className="absolute h-5 w-5 rounded-full bg-background"></div>
         <div className="absolute h-4 w-4 text-center font-bold text-primary">8</div>
       </div>
-      <span className="font-headline text-xl font-bold">Cue Controller</span>
+      <span className="font-headline text-xl font-bold">THE OX SNOOKER</span>
     </div>
   );
 }
