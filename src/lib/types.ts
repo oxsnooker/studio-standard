@@ -30,5 +30,5 @@ export interface BilliardTable {
   startTime: number; // timestamp
   elapsedTime: number; // in seconds
   sessionItems: SessionItem[];
-  lastPausedTime?: any;
+  lastPausedTime?: number | null;
 }
