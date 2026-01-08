@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { BilliardTable } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { TableCard } from '@/components/dashboard/table-card';
 
-export default function TablesPage() {
+export default function StaffPage() {
   const firestore = useFirestore();
 
   const tablesQuery = useMemoFirebase(() => {
@@ -16,7 +16,6 @@ export default function TablesPage() {
 
   const { data: tables, isLoading } = useCollection<BilliardTable>(tablesQuery);
 
-  // We need a way to trigger re-renders on the parent when a child updates
   const [sessionChangeCounter, setSessionChangeCounter] = useState(0);
   const handleSessionChange = () => {
     setSessionChangeCounter(prev => prev + 1);
@@ -24,9 +23,10 @@ export default function TablesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-       <div className="flex items-center justify-between">
-        <h1 className="font-headline text-3xl md:text-4xl">Table Status</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-headline text-3xl md:text-4xl">Table Management</h1>
       </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading
           ? [...Array(6)].map((_, i) => (

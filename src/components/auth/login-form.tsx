@@ -31,15 +31,15 @@ export function LoginForm() {
           if (userData.role === 'admin') {
             router.replace('/dashboard');
           } else {
-            router.replace('/dashboard/tables');
+            router.replace('/staff');
           }
         } else {
           // Fallback if user document doesn't exist
-          router.replace('/dashboard');
+          router.replace('/staff');
         }
       }).catch(() => {
         // Handle error, maybe redirect to a generic page
-        router.replace('/dashboard');
+        router.replace('/staff');
       });
     }
   }, [user, isUserLoading, router, firestore]);

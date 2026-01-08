@@ -10,11 +10,16 @@ import {
   UtensilsCrossed,
   Award,
   Boxes,
+  ClipboardList,
 } from 'lucide-react';
 import { Logo } from './logo';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
-const navItems = [
+
+const adminNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   { href: '/dashboard/tables', label: 'Tables', icon: LayoutGrid },
   { href: '/dashboard/products', label: 'Snacks & Drinks', icon: UtensilsCrossed },
@@ -24,9 +29,29 @@ const navItems = [
   { href: '/dashboard/reports', label: 'Reports', icon: FileText },
 ];
 
+const staffNavItems = [
+    { href: '/staff', label: 'Tables', icon: LayoutGrid },
+];
+
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [role, setRole] = useState<'admin' | 'staff' | null>(null);
+
+  useEffect(() => {
+    if (user && firestore) {
+      const userDocRef = doc(firestore, 'staff', user.uid);
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setRole(docSnap.data().role);
+        }
+      });
+    }
+  }, [user, firestore]);
+
+  const navItems = role === 'admin' ? adminNavItems : staffNavItems;
 
   const renderNavItem = (item: { href: string; label: string; icon: React.ElementType }) => {
     const Icon = item.icon;
@@ -45,6 +70,18 @@ export function DashboardSidebar() {
       </Link>
     );
   };
+
+  if (!role) {
+      return (
+        <div className="hidden border-r bg-card md:block">
+            <div className="flex h-full max-h-screen flex-col gap-2">
+                <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                    <Logo />
+                </div>
+            </div>
+        </div>
+      )
+  }
 
   return (
     <div className="hidden border-r bg-card md:block">
