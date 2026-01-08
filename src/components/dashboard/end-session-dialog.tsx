@@ -91,29 +91,47 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">End Session: {table.name}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Final Bill: {table.name}</DialogTitle>
           <DialogDescription>Review the final bill and confirm payment.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-            <div className="flex justify-between"><span>Table Time:</span> <span className="font-mono">{new Date(elapsedTime * 1000).toISOString().slice(11, 19)}</span></div>
-            <div className="flex justify-between"><span>Table Bill:</span> <span className="font-mono">${tableBill.toFixed(2)}</span></div>
+        <div className="space-y-2 py-4">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Table Time:</span> 
+              <span className="font-mono">{new Date(elapsedTime * 1000).toISOString().slice(11, 19)}</span>
+            </div>
+            <div className="flex justify-between items-center font-medium">
+              <span>Table Cost:</span> 
+              <span className="font-mono">${tableBill.toFixed(2)}</span>
+            </div>
+
             {table.sessionItems.length > 0 && (
                 <>
-                 <Separator />
-                 {table.sessionItems.map(item => (
-                    <div key={item.product.id} className="flex justify-between text-sm text-muted-foreground">
-                        <span>{item.quantity}x {item.product.name}</span>
-                        <span className="font-mono">${(item.quantity * item.product.price).toFixed(2)}</span>
-                    </div>
-                 ))}
-                 <Separator />
+                 <Separator className="my-2"/>
+                 <div className="flex justify-between items-center font-medium">
+                  <span>Products Cost:</span>
+                  <span className="font-mono">${itemsBill.toFixed(2)}</span>
+                 </div>
+                 <div className="pl-4 border-l-2 border-dashed border-muted-foreground/50 ml-1 space-y-1 mt-1">
+                  {table.sessionItems.map(item => (
+                      <div key={item.product.id} className="flex justify-between text-sm text-muted-foreground">
+                          <span>{item.quantity}x {item.product.name}</span>
+                          <span className="font-mono">${(item.quantity * item.product.price).toFixed(2)}</span>
+                      </div>
+                  ))}
+                 </div>
             </>
             )}
-            <div className="flex justify-between text-lg font-bold"><span>Total Bill:</span> <span className="font-mono">${totalBill.toFixed(2)}</span></div>
 
-            <Separator />
+            <Separator className="my-2" />
 
-            <div className="space-y-2">
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total Bill:</span> 
+              <span className="font-mono">${totalBill.toFixed(2)}</span>
+            </div>
+
+            <Separator className="my-2" />
+
+            <div className="space-y-2 pt-2">
                 <Label>Payment Method</Label>
                 <RadioGroup
                     defaultValue="cash"
@@ -132,8 +150,8 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                 </RadioGroup>
             </div>
 
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="notes">Session Notes</Label>
+          <div className="space-y-2 pt-4">
+            <Label htmlFor="notes">Session Notes (Optional)</Label>
             <Textarea
               id="notes"
               placeholder="Add any notes for this session..."
@@ -153,7 +171,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
-          <Button onClick={handleConfirmPayment}>Confirm Payment</Button>
+          <Button onClick={handleConfirmPayment}>Generate Bill &amp; End Session</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
