@@ -96,7 +96,7 @@ service cloud.firestore {
       allow list: if isStaff();
       allow create: if isOwner(staffId) && request.resource.data.id == staffId;
       allow update: if isOwner(staffId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && resource != null;
+      allow delete: if (isAdmin() || isOwner(staffId)) && resource != null;
     }
 
     /**
