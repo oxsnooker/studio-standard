@@ -204,7 +204,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             <CardTitle className="font-headline text-2xl">{table.name}</CardTitle>
             {getStatusBadge()}
           </div>
-          <CardDescription>${table.hourlyRate.toFixed(2)} / hour</CardDescription>
+          <CardDescription>₹{table.hourlyRate.toFixed(2)} / hour</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
             <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider text-center">
@@ -213,10 +213,10 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             </div>
             <div className='text-center'>
               <p className="text-sm text-muted-foreground">
-                  Table Cost: ${tableBill.toFixed(2)}
+                  Table Cost: ₹{tableBill.toFixed(2)}
               </p>
               <p className="text-xl font-bold">
-                  Total Bill: ${totalBill.toFixed(2)}
+                  Total Bill: ₹{totalBill.toFixed(2)}
               </p>
             </div>
 
@@ -231,7 +231,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
                             <div key={`${item.product.id}-${index}`} className="flex justify-between items-center text-sm">
                                 <span className='truncate pr-2'>{item.quantity}x {item.product.name}</span>
                                 <div className='flex items-center gap-2'>
-                                  <span className='font-mono'>${(item.product.price * item.quantity).toFixed(2)}</span>
+                                  <span className='font-mono'>₹{(item.product.price * item.quantity).toFixed(2)}</span>
                                   <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleRemoveItem(item.product.id)}>
                                     <Trash2 className='h-3 w-3 text-destructive' />
                                   </Button>
@@ -253,7 +253,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           )}
           {table.status === 'in-use' && (
               <Button onClick={handlePause} variant="outline" className='col-span-2'>
-                <Pause className="mr-2 h-4 w-4" /> Stop Timer
+                <Pause className="mr-2 h-4 w-4" /> Stop/Resume
               </Button>
           )}
           {table.status === 'paused' && (

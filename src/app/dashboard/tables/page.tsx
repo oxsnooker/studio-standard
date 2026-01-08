@@ -156,7 +156,7 @@ export default function TablesPage() {
                     tables?.map((table) => (
                         <TableRow key={table.id}>
                         <TableCell className="font-medium">{table.name}</TableCell>
-                        <TableCell>${table.hourlyRate.toFixed(2)}</TableCell>
+                        <TableCell>₹{table.hourlyRate.toFixed(2)}</TableCell>
                         <TableCell>{table.status}</TableCell>
                         <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => openDialog(table)}>

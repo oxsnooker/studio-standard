@@ -101,7 +101,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
             </div>
             <div className="flex justify-between items-center font-medium">
               <span>Table Cost:</span> 
-              <span className="font-mono">${tableBill.toFixed(2)}</span>
+              <span className="font-mono">₹{tableBill.toFixed(2)}</span>
             </div>
 
             {table.sessionItems.length > 0 && (
@@ -109,13 +109,13 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                  <Separator className="my-2"/>
                  <div className="flex justify-between items-center font-medium">
                   <span>Products Cost:</span>
-                  <span className="font-mono">${itemsBill.toFixed(2)}</span>
+                  <span className="font-mono">₹{itemsBill.toFixed(2)}</span>
                  </div>
                  <div className="pl-4 border-l-2 border-dashed border-muted-foreground/50 ml-1 space-y-1 mt-1">
                   {table.sessionItems.map(item => (
                       <div key={item.product.id} className="flex justify-between text-sm text-muted-foreground">
                           <span>{item.quantity}x {item.product.name}</span>
-                          <span className="font-mono">${(item.quantity * item.product.price).toFixed(2)}</span>
+                          <span className="font-mono">₹{(item.quantity * item.product.price).toFixed(2)}</span>
                       </div>
                   ))}
                  </div>
@@ -126,7 +126,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
 
             <div className="flex justify-between text-lg font-bold">
               <span>Total Bill:</span> 
-              <span className="font-mono">${totalBill.toFixed(2)}</span>
+              <span className="font-mono">₹{totalBill.toFixed(2)}</span>
             </div>
 
             <Separator className="my-2" />

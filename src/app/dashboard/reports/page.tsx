@@ -141,7 +141,7 @@ export default function ReportsPage() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${reportData.totalRevenue.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">₹{reportData.totalRevenue.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground">{reportData.totalTransactions} transactions</p>
                     </CardContent>
                 </Card>
@@ -151,7 +151,7 @@ export default function ReportsPage() {
                         <Hourglass className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${reportData.tableRevenue.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">₹{reportData.tableRevenue.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground">From table sessions</p>
                     </CardContent>
                 </Card>
@@ -161,7 +161,7 @@ export default function ReportsPage() {
                         <Utensils className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${reportData.productRevenue.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">₹{reportData.productRevenue.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground">From snacks & drinks</p>
                     </CardContent>
                 </Card>
@@ -171,8 +171,8 @@ export default function ReportsPage() {
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg font-bold">Cash: ${reportData.cashPayments.toFixed(2)}</div>
-                        <div className="text-lg font-bold">UPI: ${reportData.upiPayments.toFixed(2)}</div>
+                        <div className="text-lg font-bold">Cash: ₹{reportData.cashPayments.toFixed(2)}</div>
+                        <div className="text-lg font-bold">UPI: ₹{reportData.upiPayments.toFixed(2)}</div>
                     </CardContent>
                 </Card>
             </div>

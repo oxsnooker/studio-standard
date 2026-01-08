@@ -272,7 +272,7 @@ export default function MembershipsPage() {
                                         <TableRow key={plan.id}>
                                             <TableCell className="font-medium">{plan.name}</TableCell>
                                             <TableCell>{plan.totalHours} hours</TableCell>
-                                            <TableCell>${plan.price.toFixed(2)}</TableCell>
+                                            <TableCell>₹{plan.price.toFixed(2)}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => openPlanDialog(plan)}>
                                                     <Pencil className="h-4 w-4" />

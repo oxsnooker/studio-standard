@@ -98,7 +98,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard 
           title="Today's Revenue" 
-          value={`$${dashboardData?.todaysRevenue.toFixed(2) || '0.00'}`}
+          value={`₹${dashboardData?.todaysRevenue.toFixed(2) || '0.00'}`}
           icon={DollarSign} 
           change={isLoadingBills ? 'Loading...' : `${dashboardData?.weeklyRevenue.find(d => d.day === format(new Date(), 'EEE'))?.revenue ? '' : 'No'} sales today`}
         />
