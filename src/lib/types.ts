@@ -53,3 +53,18 @@ export interface Customer {
   validFrom: string | null;
   validTill: string | null;
 }
+
+
+export interface Bill {
+    id: string;
+    sessionId: string;
+    customerId?: string;
+    billDate: string; // ISO 8601 string
+    totalAmount: number;
+    amountPaid: number;
+    paymentMethod: 'cash' | 'upi';
+    staffId: string;
+    sessionItems: SessionItem[];
+    tableBill: number;
+    itemsBill: number;
+}

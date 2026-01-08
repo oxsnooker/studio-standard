@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,27 +11,36 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import type { BilliardTable } from '@/lib/types';
+import type { BilliardTable, Bill } from '@/lib/types';
 import { getSuggestedNotes } from '@/lib/actions';
 import { Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { useFirestore, useUser } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, serverTimestamp } from 'firebase/firestore';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Label } from '../ui/label';
 
 interface EndSessionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
+  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
 }
 
-export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime }: EndSessionDialogProps) {
+export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
   const [notes, setNotes] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
 
-  const tableBill = (elapsedTime / 3600) * table.hourlyRate;
-  const itemsBill = table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  const totalBill = tableBill + itemsBill;
+  const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
+  const itemsBill = useMemo(() => table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [table.sessionItems]);
+  const totalBill = useMemo(() => tableBill + itemsBill, [tableBill, itemsBill]);
 
   const handleGenerateNotes = () => {
     startTransition(async () => {
@@ -49,17 +58,41 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime }: E
     });
   };
   
+  const handleConfirmPayment = () => {
+    if (!firestore || !user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not process payment. User not logged in.' });
+        return;
+    }
+
+    const bill: Omit<Bill, 'id'> = {
+        sessionId: table.id, // Assuming session ID is the table ID for simplicity
+        billDate: new Date().toISOString(),
+        totalAmount: totalBill,
+        amountPaid: totalBill,
+        paymentMethod: paymentMethod,
+        staffId: user.uid,
+        sessionItems: table.sessionItems,
+        tableBill: tableBill,
+        itemsBill: itemsBill,
+        notes: notes,
+    };
+
+    onSessionEnd(bill);
+    handleClose();
+  }
+
   const handleClose = () => {
     setNotes('');
+    setPaymentMethod('cash');
     onOpenChange(false);
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Session Ended for {table.name}</DialogTitle>
-          <DialogDescription>Review the session details and finalize the bill.</DialogDescription>
+          <DialogTitle className="font-headline text-2xl">End Session: {table.name}</DialogTitle>
+          <DialogDescription>Review the final bill and confirm payment.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
             <div className="flex justify-between"><span>Table Time:</span> <span className="font-mono">{new Date(elapsedTime * 1000).toISOString().slice(11, 19)}</span></div>
@@ -78,8 +111,29 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime }: E
             )}
             <div className="flex justify-between text-lg font-bold"><span>Total Bill:</span> <span className="font-mono">${totalBill.toFixed(2)}</span></div>
 
-          <div className="space-y-2 pt-4">
-            <label htmlFor="notes" className="text-sm font-medium">Session Notes</label>
+            <Separator />
+
+            <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <RadioGroup
+                    defaultValue="cash"
+                    value={paymentMethod}
+                    onValueChange={(value: 'cash' | 'upi') => setPaymentMethod(value)}
+                    className="flex gap-4"
+                >
+                    <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash" id="cash" />
+                    <Label htmlFor="cash">Cash</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="upi" id="upi" />
+                    <Label htmlFor="upi">UPI</Label>
+                    </div>
+                </RadioGroup>
+            </div>
+
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="notes">Session Notes</Label>
             <Textarea
               id="notes"
               placeholder="Add any notes for this session..."
@@ -99,9 +153,16 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime }: E
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
-          <Button onClick={handleClose}>Confirm Payment</Button>
+          <Button onClick={handleConfirmPayment}>Confirm Payment</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+// Add 'notes' to the Bill type in your types file
+declare module '@/lib/types' {
+    interface Bill {
+        notes?: string;
+    }
 }

@@ -12,13 +12,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { BilliardTable, SessionItem } from '@/lib/types';
+import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
 import { Hourglass, Pause, Play, Square, UtensilsCrossed } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
-import { doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
+import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { mockProducts } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface TableCardProps {
   table: BilliardTable;
@@ -36,6 +38,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   const [elapsedTime, setElapsedTime] = useState(table.elapsedTime || 0);
   const [isEndSessionOpen, setEndSessionOpen] = useState(false);
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const tableRef = doc(firestore, 'tables', table.id);
 
@@ -99,11 +102,34 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
 
   const handleStop = () => {
-    updateDocumentNonBlocking(tableRef, { status: 'available', elapsedTime: elapsedTime });
+    // Don't change status here. Change it after payment is confirmed.
     setEndSessionOpen(true);
-    onSessionChange?.();
   };
   
+  const handleSessionEnd = (bill: Omit<Bill, 'id'>) => {
+    if (!firestore) return;
+    
+    // 1. Save the bill
+    const billsCollection = collection(firestore, 'bills');
+    addDocumentNonBlocking(billsCollection, bill);
+
+    // 2. Reset the table
+    updateDocumentNonBlocking(tableRef, { 
+        status: 'available', 
+        elapsedTime: 0,
+        startTime: 0,
+        sessionItems: [],
+        lastPausedTime: null,
+    });
+
+    toast({
+        title: "Session Completed",
+        description: `Bill for ${table.name} has been finalized.`,
+    });
+    
+    onSessionChange?.();
+  }
+
   const addSessionItem = (item: SessionItem) => {
       if (!tableRef) return;
       const existingItemIndex = table.sessionItems.findIndex(si => si.product.id === item.product.id);
@@ -178,7 +204,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             variant="secondary" 
             className="col-span-2" 
             disabled={table.status === 'available'}
-            onClick={() => addSessionItem({ product: mockProducts[0], quantity: 1 })}
+            onClick={() => alert("Coming soon: Add items to the session.")}
         >
               <UtensilsCrossed className="mr-2 h-4 w-4" /> Add Items
           </Button>
@@ -189,6 +215,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         onOpenChange={setEndSessionOpen}
         table={table}
         elapsedTime={elapsedTime}
+        onSessionEnd={handleSessionEnd}
       />
     </>
   );
