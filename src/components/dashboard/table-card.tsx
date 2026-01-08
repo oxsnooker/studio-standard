@@ -120,19 +120,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         const newBillRef = doc(billsCollection); // Create a new ref for the bill
         transaction.set(newBillRef, bill);
 
-        // 2. Update stock for each item
-        for (const item of bill.sessionItems) {
-          const productRef = doc(firestore, 'products', item.product.id);
-          const productDoc = await transaction.get(productRef);
-          if (!productDoc.exists()) {
-            throw new Error(`Product ${item.product.name} not found!`);
-          }
-          const currentStock = productDoc.data().stock;
-          const newStock = currentStock - item.quantity;
-          transaction.update(productRef, { stock: newStock });
-        }
-
-        // 3. Reset the table
+        // 2. Reset the table
         transaction.update(tableRef, {
           status: 'available',
           elapsedTime: 0,
@@ -144,7 +132,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
       toast({
         title: "Session Completed",
-        description: `Bill for ${table.name} has been finalized and stock updated.`,
+        description: `Bill for ${table.name} has been finalized.`,
       });
 
       onSessionChange?.();
@@ -154,7 +142,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
       toast({
         variant: "destructive",
         title: "Error Ending Session",
-        description: error.message || "Could not finalize the bill or update stock.",
+        description: error.message || "Could not finalize the bill.",
       });
     }
   }
@@ -200,7 +188,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         return (table.elapsedTime || 0) + elapsedSinceStart;
     }
     return table.elapsedTime || 0;
-  }, [table.status, table.startTime, table.elapsedTime, elapsedTime]);
+  }, [table.status, table.startTime, table.elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
   const tableBill = table.status !== 'available' ? (currentElapsedTime / 3600 * table.hourlyRate) : 0;
