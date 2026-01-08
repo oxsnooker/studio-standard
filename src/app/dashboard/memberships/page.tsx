@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import type { Membership, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Pencil, Trash2, UserPlus, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import {
   Table,
   TableBody,
@@ -39,10 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 
 
 export default function MembershipsPage() {
@@ -62,10 +59,8 @@ export default function MembershipsPage() {
     const [newCustomerPhone, setNewCustomerPhone] = useState('');
     const [newCustomerEmail, setNewCustomerEmail] = useState('');
     const [newCustomerMembershipId, setNewCustomerMembershipId] = useState('');
-    const [newCustomerValidFrom, setNewCustomerValidFrom] = useState<Date | undefined>();
-    const [newCustomerValidTill, setNewCustomerValidTill] = useState<Date | undefined>();
-    const [isFromDatePickerOpen, setFromDatePickerOpen] = useState(false);
-    const [isTillDatePickerOpen, setTillDatePickerOpen] = useState(false);
+    const [newCustomerValidFrom, setNewCustomerValidFrom] = useState('');
+    const [newCustomerValidTill, setNewCustomerValidTill] = useState('');
 
 
     const plansQuery = useMemoFirebase(() => {
@@ -113,8 +108,8 @@ export default function MembershipsPage() {
             email: newCustomerEmail,
             membershipId: isMembershipSelected ? newCustomerMembershipId : null,
             remainingHours: isMembershipSelected ? (plans?.find(p => p.id === newCustomerMembershipId)?.totalHours || 0) : 0,
-            validFrom: newCustomerValidFrom ? newCustomerValidFrom.toISOString() : null,
-            validTill: newCustomerValidTill ? newCustomerValidTill.toISOString() : null,
+            validFrom: newCustomerValidFrom,
+            validTill: newCustomerValidTill,
         }
         addDocumentNonBlocking(customersCollection, newCustomer);
 
@@ -124,8 +119,8 @@ export default function MembershipsPage() {
         setNewCustomerPhone('');
         setNewCustomerEmail('');
         setNewCustomerMembershipId('');
-        setNewCustomerValidFrom(undefined);
-        setNewCustomerValidTill(undefined);
+        setNewCustomerValidFrom('');
+        setNewCustomerValidTill('');
     }
 
     const getPlanName = (planId: string | null) => {
@@ -347,60 +342,24 @@ export default function MembershipsPage() {
                     </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Valid From</Label>
-                    <Popover open={isFromDatePickerOpen} onOpenChange={setFromDatePickerOpen}>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "col-span-3 justify-start text-left font-normal",
-                                !newCustomerValidFrom && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newCustomerValidFrom ? format(newCustomerValidFrom, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={newCustomerValidFrom}
-                            onSelect={(date) => {
-                                setNewCustomerValidFrom(date);
-                                setFromDatePickerOpen(false);
-                            }}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
+                    <Label htmlFor="cust-valid-from" className="text-right">Valid From</Label>
+                    <Input 
+                        id="cust-valid-from"
+                        type="date"
+                        value={newCustomerValidFrom}
+                        onChange={(e) => setNewCustomerValidFrom(e.target.value)}
+                        className="col-span-3"
+                    />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Valid Till</Label>
-                    <Popover open={isTillDatePickerOpen} onOpenChange={setTillDatePickerOpen}>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "col-span-3 justify-start text-left font-normal",
-                                !newCustomerValidTill && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {newCustomerValidTill ? format(newCustomerValidTill, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={newCustomerValidTill}
-                            onSelect={(date) => {
-                                setNewCustomerValidTill(date);
-                                setTillDatePickerOpen(false);
-                            }}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
+                    <Label htmlFor="cust-valid-till" className="text-right">Valid Till</Label>
+                    <Input 
+                        id="cust-valid-till"
+                        type="date"
+                        value={newCustomerValidTill}
+                        onChange={(e) => setNewCustomerValidTill(e.target.value)}
+                        className="col-span-3"
+                    />
                 </div>
             </div>
             <DialogFooter>
