@@ -51,10 +51,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function MembershipsPage() {
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     // State for plans
     const [isPlanDialogOpen, setPlanDialogOpen] = useState(false);
@@ -102,6 +104,7 @@ export default function MembershipsPage() {
                 totalHours: Number(newPlanHours),
                 price: Number(newPlanPrice),
             });
+            toast({ title: 'Plan Updated', description: `The "${newPlanName}" plan has been updated.` });
         } else {
             // Add
             const plansCollection = collection(firestore, 'memberships');
@@ -112,6 +115,7 @@ export default function MembershipsPage() {
                 price: Number(newPlanPrice),
             };
             addDocumentNonBlocking(plansCollection, newPlan);
+            toast({ title: 'Plan Created', description: `The "${newPlanName}" plan has been created.` });
         }
         
         setPlanDialogOpen(false);
@@ -143,6 +147,7 @@ export default function MembershipsPage() {
         if (!firestore || !deletingPlan) return;
         const planRef = doc(firestore, 'memberships', deletingPlan.id);
         deleteDocumentNonBlocking(planRef);
+        toast({ title: 'Plan Deleted', description: `The "${deletingPlan.name}" plan has been deleted.` });
         setDeletingPlan(null);
     }
 
@@ -166,9 +171,11 @@ export default function MembershipsPage() {
         if(editingCustomer) {
             const customerRef = doc(firestore, 'customers', editingCustomer.id);
             updateDocumentNonBlocking(customerRef, customerData);
+             toast({ title: 'Customer Updated', description: `${newCustomerFirstName} ${newCustomerLastName}'s details have been updated.` });
         } else {
             const customersCollection = collection(firestore, 'customers');
             addDocumentNonBlocking(customersCollection, customerData);
+            toast({ title: 'Customer Added', description: `${newCustomerFirstName} ${newCustomerLastName} has been added.` });
         }
 
         setCustomerDialogOpen(false);
@@ -209,6 +216,7 @@ export default function MembershipsPage() {
         if (!firestore || !deletingCustomer) return;
         const customerRef = doc(firestore, 'customers', deletingCustomer.id);
         deleteDocumentNonBlocking(customerRef);
+        toast({ title: 'Customer Deleted', description: `${deletingCustomer.firstName} ${deletingCustomer.lastName} has been deleted.` });
         setDeletingCustomer(null);
     }
 
