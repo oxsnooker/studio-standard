@@ -2,16 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, DollarSign, CreditCard, Utensils, Hourglass } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { DollarSign, CreditCard, Utensils, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Bill } from '@/lib/types';
@@ -52,7 +46,6 @@ const chartConfig = {
 
 export default function ReportsPage() {
   const [date, setDate] = useState<Date>(new Date());
-  const [isDatePickerOpen, setDatePickerOpen] = useState(false);
   const firestore = useFirestore();
 
   const billsQuery = useMemoFirebase(() => {
@@ -110,37 +103,27 @@ export default function ReportsPage() {
       { type: 'UPI', value: reportData?.upiPayments || 0 },
   ];
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      // The input type="date" gives a string "YYYY-MM-DD"
+      // We need to parse it correctly, considering timezones.
+      // parseISO will parse it as UTC, then we can treat it as the start of that day.
+      setDate(startOfDay(parseISO(e.target.value)));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="font-headline text-3xl md:text-4xl">Revenue Reports</h1>
-        <Popover open={isDatePickerOpen} onOpenChange={setDatePickerOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "w-[280px] justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, "PPP") : <span>Pick a date</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(day) => {
-                if (day) {
-                    setDate(day)
-                    setDatePickerOpen(false)
-                }
-              }}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <div className="w-full md:w-[280px]">
+          <Input
+            type="date"
+            value={format(date, 'yyyy-MM-dd')}
+            onChange={handleDateChange}
+            className="w-full"
+          />
+        </div>
       </div>
       
       {isLoading && (
@@ -228,8 +211,8 @@ export default function ReportsPage() {
                                     content={<ChartTooltipContent indicator="dot" />}
                                 />
                                 <Bar dataKey="value" radius={5}>
-                                    {paymentChartData.map(entry => (
-                                        <div key={entry.type} style={{backgroundColor: entry.type === 'Cash' ? 'var(--color-cash)' : 'var(--color-upi)'}}></div>
+                                    {paymentChartData.map((entry, index) => (
+                                        <div key={`cell-${index}`} style={{backgroundColor: entry.type === 'Cash' ? 'var(--color-cash)' : 'var(--color-upi)'}}></div>
                                     ))}
                                 </Bar>
                             </BarChart>
