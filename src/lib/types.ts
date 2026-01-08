@@ -50,4 +50,6 @@ export interface Customer {
   email: string;
   membershipId: string | null;
   remainingHours: number;
+  validFrom: string | null;
+  validTill: string | null;
 }

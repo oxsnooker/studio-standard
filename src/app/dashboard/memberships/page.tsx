@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Membership, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, UserPlus, Calendar as CalendarIcon } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -39,6 +39,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 export default function MembershipsPage() {
@@ -58,6 +62,8 @@ export default function MembershipsPage() {
     const [newCustomerPhone, setNewCustomerPhone] = useState('');
     const [newCustomerEmail, setNewCustomerEmail] = useState('');
     const [newCustomerMembershipId, setNewCustomerMembershipId] = useState('');
+    const [newCustomerValidFrom, setNewCustomerValidFrom] = useState<Date | undefined>();
+    const [newCustomerValidTill, setNewCustomerValidTill] = useState<Date | undefined>();
 
 
     const plansQuery = useMemoFirebase(() => {
@@ -105,6 +111,8 @@ export default function MembershipsPage() {
             email: newCustomerEmail,
             membershipId: isMembershipSelected ? newCustomerMembershipId : null,
             remainingHours: isMembershipSelected ? (plans?.find(p => p.id === newCustomerMembershipId)?.totalHours || 0) : 0,
+            validFrom: newCustomerValidFrom ? newCustomerValidFrom.toISOString() : null,
+            validTill: newCustomerValidTill ? newCustomerValidTill.toISOString() : null,
         }
         addDocumentNonBlocking(customersCollection, newCustomer);
 
@@ -114,6 +122,8 @@ export default function MembershipsPage() {
         setNewCustomerPhone('');
         setNewCustomerEmail('');
         setNewCustomerMembershipId('');
+        setNewCustomerValidFrom(undefined);
+        setNewCustomerValidTill(undefined);
     }
 
     const getPlanName = (planId: string | null) => {
@@ -210,6 +220,8 @@ export default function MembershipsPage() {
                                     <TableHead>Phone</TableHead>
                                     <TableHead>Membership</TableHead>
                                     <TableHead>Remaining Hours</TableHead>
+                                    <TableHead>Valid From</TableHead>
+                                    <TableHead>Valid Till</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                                 </TableHeader>
@@ -217,6 +229,8 @@ export default function MembershipsPage() {
                                     {isLoadingCustomers ? (
                                         [...Array(3)].map((_, i) => (
                                             <TableRow key={i}>
+                                                <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
+                                                <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                                 <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                                 <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                                 <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
@@ -231,6 +245,8 @@ export default function MembershipsPage() {
                                             <TableCell>{customer.phone}</TableCell>
                                             <TableCell>{getPlanName(customer.membershipId)}</TableCell>
                                             <TableCell>{customer.remainingHours} hours</TableCell>
+                                            <TableCell>{customer.validFrom ? format(new Date(customer.validFrom), "PPP") : 'N/A'}</TableCell>
+                                            <TableCell>{customer.validTill ? format(new Date(customer.validTill), "PPP") : 'N/A'}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon">
                                                     <Pencil className="h-4 w-4" />
@@ -288,7 +304,7 @@ export default function MembershipsPage() {
 
         {/* Add Customer Dialog */}
         <Dialog open={isCustomerDialogOpen} onOpenChange={setCustomerDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>Add New Customer</DialogTitle>
                 <DialogDescription>
@@ -327,6 +343,56 @@ export default function MembershipsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Valid From</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                                "col-span-3 justify-start text-left font-normal",
+                                !newCustomerValidFrom && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {newCustomerValidFrom ? format(newCustomerValidFrom, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={newCustomerValidFrom}
+                            onSelect={setNewCustomerValidFrom}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Valid Till</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                                "col-span-3 justify-start text-left font-normal",
+                                !newCustomerValidTill && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {newCustomerValidTill ? format(newCustomerValidTill, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={newCustomerValidTill}
+                            onSelect={setNewCustomerValidTill}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
                 </div>
             </div>
             <DialogFooter>

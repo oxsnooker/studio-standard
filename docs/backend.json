@@ -235,6 +235,16 @@
         "remainingHours": {
           "type": "number",
           "description": "Remaining membership hours."
+        },
+        "validFrom": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the membership becomes valid."
+        },
+        "validTill": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the membership expires."
         }
       },
       "required": [
