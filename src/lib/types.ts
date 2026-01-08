@@ -33,3 +33,21 @@ export interface BilliardTable {
   sessionItems: SessionItem[];
   lastPausedTime?: number | null;
 }
+
+export interface Membership {
+  id: string;
+  name: string;
+  description: string;
+  totalHours: number;
+  price: number;
+}
+
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  membershipId: string | null;
+  remainingHours: number;
+}
