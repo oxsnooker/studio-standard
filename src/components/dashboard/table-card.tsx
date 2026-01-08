@@ -47,27 +47,22 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (table.status === 'in-use') {
+      // Calculate elapsed time since start time and update state
+      const initialElapsed = Math.floor((Date.now() - table.startTime) / 1000);
+      setElapsedTime(table.elapsedTime + initialElapsed);
+
       interval = setInterval(() => {
         setElapsedTime((prev) => prev + 1);
       }, 1000);
+    } else {
+        setElapsedTime(table.elapsedTime || 0);
     }
     return () => {
       if (interval) {
         clearInterval(interval);
       }
     };
-  }, [table.status]);
-  
-  useEffect(() => {
-    if (table.status === 'in-use') {
-        const timer = setInterval(() => {
-          const now = Date.now();
-          const elapsed = table.elapsedTime + Math.floor((now - (table.lastPausedTime || table.startTime)) / 1000);
-          updateDocumentNonBlocking(tableRef, { elapsedTime: elapsed });
-        }, 60000); // Update every minute to reduce writes
-        return () => clearInterval(timer);
-      }
-  }, [table.status, table.elapsedTime, table.startTime, table.lastPausedTime, tableRef]);
+  }, [table.status, table.startTime, table.elapsedTime]);
 
   useEffect(() => {
     setElapsedTime(table.elapsedTime || 0);
@@ -86,11 +81,14 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
   const handlePause = () => {
     const now = Date.now();
-    const newElapsedTime = table.elapsedTime + Math.floor((now - (table.lastPausedTime ? table.startTime - table.lastPausedTime : table.startTime)) / 1000);
+    const elapsedSinceStart = Math.floor((now - table.startTime) / 1000);
+    const newElapsedTime = table.elapsedTime + elapsedSinceStart;
+    
     updateDocumentNonBlocking(tableRef, { 
       status: 'paused',
-      elapsedTime: elapsedTime,
+      elapsedTime: newElapsedTime,
       lastPausedTime: now,
+      startTime: 0 // Reset start time as we now rely on elapsedTime
     });
     onSessionChange?.();
   };
@@ -98,7 +96,8 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   const handleResume = () => {
     updateDocumentNonBlocking(tableRef, { 
         status: 'in-use',
-        startTime: table.startTime + (Date.now() - table.lastPausedTime) // Adjust start time
+        startTime: Date.now(), // Set new start time for current running segment
+        lastPausedTime: null,
     });
     onSessionChange?.();
   };
@@ -191,9 +190,17 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         return <Badge variant="destructive">Stopped</Badge>;
     }
   };
+  
+  const currentElapsedTime = useMemo(() => {
+    if (table.status === 'in-use') {
+        const elapsedSinceStart = Math.floor((Date.now() - table.startTime) / 1000);
+        return table.elapsedTime + elapsedSinceStart;
+    }
+    return table.elapsedTime;
+  }, [table.status, table.startTime, table.elapsedTime, elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
-  const tableBill = table.status !== 'available' ? (elapsedTime / 3600 * table.hourlyRate) : 0;
+  const tableBill = table.status !== 'available' ? (currentElapsedTime / 3600 * table.hourlyRate) : 0;
   const totalBill = tableBill + itemsBill;
 
   return (
@@ -209,7 +216,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
             <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider text-center">
                 <Hourglass className={cn("h-8 w-8", table.status === 'in-use' && 'text-accent animate-pulse')} />
-                <span>{formatTime(elapsedTime)}</span>
+                <span>{formatTime(currentElapsedTime)}</span>
             </div>
             <div className='text-center'>
               <p className="text-sm text-muted-foreground">
@@ -280,7 +287,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         isOpen={isEndSessionOpen}
         onOpenChange={setEndSessionOpen}
         table={table}
-        elapsedTime={elapsedTime}
+        elapsedTime={currentElapsedTime}
         onSessionEnd={handleSessionEnd}
       />
       <AddItemDialog
