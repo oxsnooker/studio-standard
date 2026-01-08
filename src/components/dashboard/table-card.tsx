@@ -13,13 +13,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
-import { Hourglass, Pause, Play, Square, UtensilsCrossed } from 'lucide-react';
+import { Hourglass, Pause, Play, Square, UtensilsCrossed, Trash2 } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
 import { doc, collection, runTransaction } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface TableCardProps {
   table: BilliardTable;
@@ -170,6 +172,15 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
       onSessionChange?.();
   };
 
+  const handleRemoveItem = (productId: string) => {
+    if (!tableRef) return;
+    const newSessionItems = table.sessionItems.filter(si => si.product.id !== productId);
+    updateDocumentNonBlocking(tableRef, { sessionItems: newSessionItems });
+    toast({ title: 'Item Removed', description: `Item removed from ${table.name}.` });
+    onSessionChange?.();
+  };
+
+
   const getStatusBadge = () => {
     switch (table.status) {
       case 'available':
@@ -181,9 +192,13 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     }
   };
 
+  const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
+  const tableBill = table.status !== 'available' ? (elapsedTime / 3600 * table.hourlyRate) : 0;
+  const totalBill = tableBill + itemsBill;
+
   return (
     <>
-      <Card className="flex flex-col">
+      <Card className="flex flex-col min-h-[450px]">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="font-headline text-2xl">{table.name}</CardTitle>
@@ -191,16 +206,46 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           </div>
           <CardDescription>${table.hourlyRate.toFixed(2)} / hour</CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow flex flex-col items-center justify-center gap-2">
-            <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider">
+        <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
+            <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider text-center">
                 <Hourglass className={cn("h-8 w-8", table.status === 'in-use' && 'text-accent animate-pulse')} />
                 <span>{formatTime(elapsedTime)}</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-                Bill: ${(elapsedTime / 3600 * table.hourlyRate).toFixed(2)}
-            </p>
+            <div className='text-center'>
+              <p className="text-sm text-muted-foreground">
+                  Table Cost: ${tableBill.toFixed(2)}
+              </p>
+              <p className="text-xl font-bold">
+                  Total Bill: ${totalBill.toFixed(2)}
+              </p>
+            </div>
+
+            <Separator className='my-2' />
+
+            <div className='w-full flex-grow'>
+                <h4 className='text-sm font-medium mb-2 text-center'>Session Items</h4>
+                <ScrollArea className='h-24'>
+                    <div className='space-y-2 pr-4'>
+                    {table.sessionItems?.length > 0 ? (
+                        table.sessionItems.map((item, index) => (
+                            <div key={`${item.product.id}-${index}`} className="flex justify-between items-center text-sm">
+                                <span className='truncate pr-2'>{item.quantity}x {item.product.name}</span>
+                                <div className='flex items-center gap-2'>
+                                  <span className='font-mono'>${(item.product.price * item.quantity).toFixed(2)}</span>
+                                  <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleRemoveItem(item.product.id)}>
+                                    <Trash2 className='h-3 w-3 text-destructive' />
+                                  </Button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className='text-xs text-muted-foreground text-center pt-4'>No items added yet.</p>
+                    )}
+                    </div>
+                </ScrollArea>
+            </div>
         </CardContent>
-        <CardFooter className="grid grid-cols-2 gap-2">
+        <CardFooter className="grid grid-cols-2 gap-2 mt-auto">
           {table.status === 'available' && (
             <Button onClick={handleStart} className="col-span-2">
               <Play className="mr-2 h-4 w-4" /> Start Session
@@ -231,7 +276,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             className="col-span-2" 
             disabled={table.status === 'available'}
             onClick={() => setAddItemOpen(true)}
-        >
+          >
               <UtensilsCrossed className="mr-2 h-4 w-4" /> Add Items
           </Button>
         </CardFooter>
