@@ -22,6 +22,7 @@ import { mockProducts } from '@/lib/data';
 
 interface TableCardProps {
   table: BilliardTable;
+  onSessionChange?: () => void;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -31,7 +32,7 @@ const formatTime = (totalSeconds: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export function TableCard({ table }: TableCardProps) {
+export function TableCard({ table, onSessionChange }: TableCardProps) {
   const [elapsedTime, setElapsedTime] = useState(table.elapsedTime || 0);
   const [isEndSessionOpen, setEndSessionOpen] = useState(false);
   const firestore = useFirestore();
@@ -75,6 +76,7 @@ export function TableCard({ table }: TableCardProps) {
         sessionItems: [],
         lastPausedTime: null
     }, { merge: true });
+    onSessionChange?.();
   };
 
   const handlePause = () => {
@@ -85,6 +87,7 @@ export function TableCard({ table }: TableCardProps) {
       elapsedTime: elapsedTime,
       lastPausedTime: now,
     });
+    onSessionChange?.();
   };
 
   const handleResume = () => {
@@ -92,11 +95,13 @@ export function TableCard({ table }: TableCardProps) {
         status: 'in-use',
         startTime: table.startTime + (Date.now() - table.lastPausedTime) // Adjust start time
     });
+    onSessionChange?.();
   };
 
   const handleStop = () => {
     updateDocumentNonBlocking(tableRef, { status: 'available', elapsedTime: elapsedTime });
     setEndSessionOpen(true);
+    onSessionChange?.();
   };
   
   const addSessionItem = (item: SessionItem) => {
@@ -110,6 +115,7 @@ export function TableCard({ table }: TableCardProps) {
         newSessionItems = [...(table.sessionItems || []), item];
       }
       updateDocumentNonBlocking(tableRef, { sessionItems: newSessionItems });
+      onSessionChange?.();
   };
 
   const getStatusBadge = () => {
