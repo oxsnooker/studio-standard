@@ -64,6 +64,8 @@ export default function MembershipsPage() {
     const [newCustomerMembershipId, setNewCustomerMembershipId] = useState('');
     const [newCustomerValidFrom, setNewCustomerValidFrom] = useState<Date | undefined>();
     const [newCustomerValidTill, setNewCustomerValidTill] = useState<Date | undefined>();
+    const [isFromDatePickerOpen, setFromDatePickerOpen] = useState(false);
+    const [isTillDatePickerOpen, setTillDatePickerOpen] = useState(false);
 
 
     const plansQuery = useMemoFirebase(() => {
@@ -346,7 +348,7 @@ export default function MembershipsPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Valid From</Label>
-                    <Popover>
+                    <Popover open={isFromDatePickerOpen} onOpenChange={setFromDatePickerOpen}>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
@@ -363,7 +365,10 @@ export default function MembershipsPage() {
                         <Calendar
                             mode="single"
                             selected={newCustomerValidFrom}
-                            onSelect={setNewCustomerValidFrom}
+                            onSelect={(date) => {
+                                setNewCustomerValidFrom(date);
+                                setFromDatePickerOpen(false);
+                            }}
                             initialFocus
                         />
                         </PopoverContent>
@@ -371,7 +376,7 @@ export default function MembershipsPage() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Valid Till</Label>
-                    <Popover>
+                    <Popover open={isTillDatePickerOpen} onOpenChange={setTillDatePickerOpen}>
                         <PopoverTrigger asChild>
                         <Button
                             variant={"outline"}
@@ -388,7 +393,10 @@ export default function MembershipsPage() {
                         <Calendar
                             mode="single"
                             selected={newCustomerValidTill}
-                            onSelect={setNewCustomerValidTill}
+                            onSelect={(date) => {
+                                setNewCustomerValidTill(date);
+                                setTillDatePickerOpen(false);
+                            }}
                             initialFocus
                         />
                         </PopoverContent>
