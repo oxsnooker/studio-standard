@@ -267,14 +267,20 @@
         },
         "category": {
           "type": "string",
-          "description": "Category of the product (e.g., 'snack', 'drink')."
+          "enum": ["Snacks", "Drinks", "Other"],
+          "description": "Category of the product (e.g., 'Snacks', 'Drinks', 'Other')."
+        },
+        "stock": {
+          "type": "number",
+          "description": "The quantity of the product in stock."
         }
       },
       "required": [
         "id",
         "name",
         "price",
-        "category"
+        "category",
+        "stock"
       ]
     },
     "Expense": {

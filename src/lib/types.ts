@@ -15,6 +15,7 @@ export interface Product {
   name: string;
   price: number;
   category: 'Snacks' | 'Drinks' | 'Other';
+  stock: number;
 }
 
 export interface SessionItem {
