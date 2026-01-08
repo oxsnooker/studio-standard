@@ -20,7 +20,7 @@ service cloud.firestore {
      *   user has a 'staff' or 'admin' role in their own /staff/{userId} document.
      *   This is the primary authorization gate for the entire system.
      * - Staff Profile Privacy: Staff members cannot list or view each other's profiles,
-     *   ensuring personal data privacy. They can only create and manage their own.
+     *   except for admins who can list everyone for management purposes.
      * - No Public Access: There are no publicly readable collections.
      *
      * Denormalization for Authorization: The `staffId` field is denormalized onto key
@@ -63,6 +63,13 @@ service cloud.firestore {
     }
 
     /**
+     * Checks if the user is a registered admin.
+     */
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    /**
      * A specific check for update/delete operations to ensure the document exists
      * and the user is an authorized staff member.
      */
@@ -77,15 +84,16 @@ service cloud.firestore {
 
     /**
      * @description Manages staff member profiles. A staff member can create their own profile
-     * and manage it, but cannot see or edit anyone else's profile.
+     * and manage it, but cannot see or edit anyone else's profile. Admins can list all staff.
      * @path /staff/{staffId}
-     * @allow (create) a new user creating their own staff document.
-     * @deny (get) a staff member trying to read another staff member's document.
-     * @principle Restricts access to a user's own data tree.
+     * @allow (get) a staff member reading their own document.
+     * @allow (list) an admin listing all staff members for management.
+     * @deny (list) a non-admin staff member trying to list other staff.
+     * @principle Restricts access to a user's own data, with an exception for admins.
      */
     match /staff/{staffId} {
-      allow get: if isOwner(staffId);
-      allow list: if false;
+      allow get: if isOwner(staffId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(staffId) && request.resource.data.id == staffId;
       allow update: if isOwner(staffId) && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if isOwner(staffId) && resource != null;
