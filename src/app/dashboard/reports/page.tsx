@@ -52,6 +52,7 @@ const chartConfig = {
 
 export default function ReportsPage() {
   const [date, setDate] = useState<Date>(new Date());
+  const [isDatePickerOpen, setDatePickerOpen] = useState(false);
   const firestore = useFirestore();
 
   const billsQuery = useMemoFirebase(() => {
@@ -113,7 +114,7 @@ export default function ReportsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="font-headline text-3xl md:text-4xl">Revenue Reports</h1>
-        <Popover>
+        <Popover open={isDatePickerOpen} onOpenChange={setDatePickerOpen}>
           <PopoverTrigger asChild>
             <Button
               variant={"outline"}
@@ -130,7 +131,12 @@ export default function ReportsPage() {
             <Calendar
               mode="single"
               selected={date}
-              onSelect={(day) => day && setDate(day)}
+              onSelect={(day) => {
+                if (day) {
+                    setDate(day)
+                    setDatePickerOpen(false)
+                }
+              }}
               initialFocus
             />
           </PopoverContent>
@@ -234,7 +240,7 @@ export default function ReportsPage() {
           </>
       )}
 
-      {!isLoading && !reportData && (
+      {!isLoading && bills?.length === 0 && (
         <Card>
           <CardHeader>
             <CardTitle>No Data</CardTitle>
