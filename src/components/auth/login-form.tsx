@@ -22,9 +22,10 @@ export function LoginForm() {
 
 
   useEffect(() => {
-    if (!isUserLoading && user && firestore) {
+    if (!isUserLoading && user && firestore && !isRedirecting) {
       setIsRedirecting(true);
       const userDocRef = doc(firestore, 'staff', user.uid);
+      
       getDoc(userDocRef).then(docSnap => {
         if (docSnap.exists()) {
           const userData = docSnap.data();
@@ -34,15 +35,21 @@ export function LoginForm() {
             router.replace('/staff');
           }
         } else {
-          // Fallback if user document doesn't exist
-          router.replace('/staff');
+          // If the user has an auth record but no staff doc,
+          // they might be in the process of being created or an error occurred.
+          // Fallback to the most restrictive page or a generic page.
+          console.warn(`User ${user.uid} document not found in 'staff' collection.`);
+          router.replace('/login'); // Or an error page
+          auth.signOut(); // Log them out as they are not a valid staff member
         }
-      }).catch(() => {
+      }).catch((error) => {
+        console.error("Error fetching user role:", error);
         // Handle error, maybe redirect to a generic page
-        router.replace('/staff');
+        router.replace('/login');
+        auth.signOut();
       });
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, isUserLoading, router, firestore, isRedirecting, auth]);
 
   const handleLoginError = (error: any) => {
     console.error("Login failed:", error);
