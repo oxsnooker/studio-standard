@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -81,7 +81,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
   const handlePause = () => {
     const now = Date.now();
-    const elapsedSinceStart = Math.floor((now - table.startTime) / 1000);
+    const elapsedSinceStart = table.startTime ? Math.floor((now - table.startTime) / 1000) : 0;
     const newElapsedTime = table.elapsedTime + elapsedSinceStart;
     
     updateDocumentNonBlocking(tableRef, { 
@@ -192,11 +192,11 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
   
   const currentElapsedTime = useMemo(() => {
-    if (table.status === 'in-use') {
+    if (table.status === 'in-use' && table.startTime) {
         const elapsedSinceStart = Math.floor((Date.now() - table.startTime) / 1000);
         return table.elapsedTime + elapsedSinceStart;
     }
-    return table.elapsedTime;
+    return table.elapsedTime || 0;
   }, [table.status, table.startTime, table.elapsedTime, elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
