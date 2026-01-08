@@ -15,12 +15,11 @@ import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
 import { Hourglass, Pause, Play, Square, UtensilsCrossed } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
+import { AddItemDialog } from './add-item-dialog';
 import { doc, collection } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { mockProducts } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-
 
 interface TableCardProps {
   table: BilliardTable;
@@ -37,6 +36,7 @@ const formatTime = (totalSeconds: number) => {
 export function TableCard({ table, onSessionChange }: TableCardProps) {
   const [elapsedTime, setElapsedTime] = useState(table.elapsedTime || 0);
   const [isEndSessionOpen, setEndSessionOpen] = useState(false);
+  const [isAddItemOpen, setAddItemOpen] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -130,7 +130,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     onSessionChange?.();
   }
 
-  const addSessionItem = (item: SessionItem) => {
+  const handleAddItem = (item: SessionItem) => {
       if (!tableRef) return;
       const existingItemIndex = table.sessionItems.findIndex(si => si.product.id === item.product.id);
       let newSessionItems: SessionItem[];
@@ -141,6 +141,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         newSessionItems = [...(table.sessionItems || []), item];
       }
       updateDocumentNonBlocking(tableRef, { sessionItems: newSessionItems });
+      toast({ title: 'Item Added', description: `${item.quantity}x ${item.product.name} added to ${table.name}.`})
       onSessionChange?.();
   };
 
@@ -204,7 +205,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             variant="secondary" 
             className="col-span-2" 
             disabled={table.status === 'available'}
-            onClick={() => alert("Coming soon: Add items to the session.")}
+            onClick={() => setAddItemOpen(true)}
         >
               <UtensilsCrossed className="mr-2 h-4 w-4" /> Add Items
           </Button>
@@ -216,6 +217,11 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         table={table}
         elapsedTime={elapsedTime}
         onSessionEnd={handleSessionEnd}
+      />
+      <AddItemDialog
+        isOpen={isAddItemOpen}
+        onOpenChange={setAddItemOpen}
+        onAddItem={handleAddItem}
       />
     </>
   );
