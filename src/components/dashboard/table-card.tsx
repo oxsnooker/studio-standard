@@ -122,23 +122,30 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
     try {
       await runTransaction(firestore, async (transaction) => {
+        // Rule: All reads must come before all writes.
+        let customerRef;
+        let customerDoc;
+        if (customerId && hoursToDeduct && hoursToDeduct > 0) {
+            customerRef = doc(firestore, 'customers', customerId);
+            customerDoc = await transaction.get(customerRef);
+            if (!customerDoc.exists()) {
+                throw "Customer not found.";
+            }
+        }
+        
+        // --- All reads are done, now perform writes ---
+
         // 1. Save the bill
         const billsCollection = collection(firestore, 'bills');
         const newBillRef = doc(billsCollection); // Create a new ref for the bill
         transaction.set(newBillRef, bill);
 
         // 2. If membership payment, update customer's remaining hours
-        if (customerId && hoursToDeduct && hoursToDeduct > 0) {
-            const customerRef = doc(firestore, 'customers', customerId);
-            const customerDoc = await transaction.get(customerRef);
-            if (!customerDoc.exists()) {
-                throw "Customer not found.";
-            }
+        if (customerRef && customerDoc && hoursToDeduct && hoursToDeduct > 0) {
             const currentHours = customerDoc.data().remainingHours || 0;
             const newRemainingHours = currentHours - hoursToDeduct;
             transaction.update(customerRef, { remainingHours: newRemainingHours });
         }
-
 
         // 3. Reset the table
         transaction.update(tableRef, {
@@ -301,5 +308,3 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     </>
   );
 }
-
-    
