@@ -70,4 +70,8 @@ export interface Bill {
     sessionItems: SessionItem[];
     tableBill: number;
     itemsBill: number;
+    notes?: string;
+    startTime: number;
+    endTime: number;
+    duration: number;
 }

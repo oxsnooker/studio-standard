@@ -14,10 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { BilliardTable, Bill } from '@/lib/types';
 import { getSuggestedNotes } from '@/lib/actions';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
-import { useFirestore, useUser } from '@/firebase';
+import { useUser } from '@/firebase';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
 
@@ -26,7 +26,7 @@ interface EndSessionDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
-  onSessionEnd: (bill: Omit<Bill, 'id'>, tableName: string) => void;
+  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
 }
 
 export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
@@ -75,9 +75,12 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         tableBill: tableBill,
         itemsBill: itemsBill,
         notes: notes,
+        startTime: table.startTime,
+        endTime: Date.now(),
+        duration: elapsedTime,
     };
 
-    onSessionEnd(bill, table.name);
+    onSessionEnd(bill);
     handleClose();
   }
 
@@ -172,16 +175,11 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
-          <Button onClick={handleConfirmPayment}>End Session</Button>
+          <Button onClick={handleConfirmPayment}>
+            <Download className="mr-2 h-4 w-4" /> End & Download Bill
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-// Add 'notes' to the Bill type in your types file
-declare module '@/lib/types' {
-    interface Bill {
-        notes?: string;
-    }
 }

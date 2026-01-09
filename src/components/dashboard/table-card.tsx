@@ -17,13 +17,15 @@ import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
 import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText, Clock, PlayCircle, PauseCircle } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
-import { doc, collection, runTransaction } from 'firebase/firestore';
+import { doc, collection, runTransaction, DocumentReference } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { format } from 'date-fns';
+import { generateBillPdf } from '@/lib/generate-pdf';
+
 
 interface TableCardProps {
   table: BilliardTable;
@@ -53,24 +55,19 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (table.status === 'in-use' && table.currentSegmentStartTime) {
-        // Function to calculate elapsed time and set it
         const calculateAndSetElapsedTime = () => {
             const now = Date.now();
-            // elapsed since the current segment started
             const elapsedSinceStart = Math.floor((now - (table.currentSegmentStartTime || now)) / 1000);
-            // total elapsed time is previous elapsed time + current segment's elapsed time
             setElapsedTime((table.elapsedTime || 0) + elapsedSinceStart);
         };
         
-        calculateAndSetElapsedTime(); // Initial calculation
+        calculateAndSetElapsedTime();
 
         interval = setInterval(() => {
-            // We can just increment here for smoother updates
             setElapsedTime(prev => prev + 1);
         }, 1000);
 
     } else {
-        // If not in-use, just display the stored elapsedTime
         setElapsedTime(table.elapsedTime || 0);
     }
 
@@ -105,7 +102,8 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
       status: 'paused',
       elapsedTime: newElapsedTime,
       lastPausedTime: now,
-      currentSegmentStartTime: 0 // Reset current segment start time
+      currentSegmentStartTime: 0,
+      startTime: table.startTime || now
     });
     onSessionChange?.();
   };
@@ -114,24 +112,24 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     if (!tableRef) return;
     updateDocumentNonBlocking(tableRef, { 
         status: 'in-use',
-        currentSegmentStartTime: Date.now(), // Set new start time for current running segment
+        currentSegmentStartTime: Date.now(),
         lastPausedTime: null,
     });
     onSessionChange?.();
   };
 
   const handleOpenBillDialog = () => {
-    // Don't change status here. Change it after payment is confirmed.
     setEndSessionOpen(true);
   };
   
-  const handleSessionEnd = async (bill: Omit<Bill, 'id'>, tableName: string) => {
+  const handleSessionEnd = async (billData: Omit<Bill, 'id'>) => {
     if (!firestore || !tableRef) return;
 
     try {
+      let newBillRef: DocumentReference;
       await runTransaction(firestore, async (transaction) => {
-        const newBillRef = doc(collection(firestore, 'bills'));
-        transaction.set(newBillRef, bill);
+        newBillRef = doc(collection(firestore, 'bills'));
+        transaction.set(newBillRef, { ...billData, id: newBillRef.id });
 
         transaction.update(tableRef, {
           status: 'available',
@@ -143,9 +141,13 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         });
       });
 
+      // After transaction is successful, generate and download PDF
+      const finalBill: Bill = { ...billData, id: newBillRef!.id };
+      generateBillPdf(finalBill, table.name);
+
       toast({
         title: "Session Completed",
-        description: `Bill for ${tableName} has been finalized.`,
+        description: `Bill for ${table.name} has been finalized and downloaded.`,
       });
 
       onSessionChange?.();
