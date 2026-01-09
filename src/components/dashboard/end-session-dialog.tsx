@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -36,7 +37,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'membership'>('cash');
 
   const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
   const itemsBill = useMemo(() => table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [table.sessionItems]);
@@ -136,16 +137,20 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                 <RadioGroup
                     defaultValue="cash"
                     value={paymentMethod}
-                    onValueChange={(value: 'cash' | 'upi') => setPaymentMethod(value)}
+                    onValueChange={(value: 'cash' | 'upi' | 'membership') => setPaymentMethod(value)}
                     className="flex gap-4"
                 >
                     <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cash" id="cash" />
-                    <Label htmlFor="cash">Cash</Label>
+                      <RadioGroupItem value="cash" id="cash" />
+                      <Label htmlFor="cash">Cash</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="upi" id="upi" />
-                    <Label htmlFor="upi">UPI</Label>
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi">UPI</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="membership" id="membership" />
+                      <Label htmlFor="membership">Membership</Label>
                     </div>
                 </RadioGroup>
             </div>

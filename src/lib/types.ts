@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'staff';
 
 export interface User {
@@ -63,7 +64,7 @@ export interface Bill {
     billDate: string; // ISO 8601 string
     totalAmount: number;
     amountPaid: number;
-    paymentMethod: 'cash' | 'upi';
+    paymentMethod: 'cash' | 'upi' | 'membership';
     staffId: string;
     sessionItems: SessionItem[];
     tableBill: number;
