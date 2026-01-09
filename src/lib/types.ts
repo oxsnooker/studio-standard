@@ -34,6 +34,7 @@ export interface BilliardTable {
   sessionItems: SessionItem[];
   lastPausedTime?: number | null;
   createdAt?: number;
+  currentSegmentStartTime?: number;
 }
 
 export interface Membership {

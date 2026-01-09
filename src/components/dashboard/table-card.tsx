@@ -58,7 +58,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         const calculateAndSetElapsedTime = () => {
             const now = Date.now();
             // elapsed since the current segment started
-            const elapsedSinceStart = Math.floor((now - (table.startTime || now)) / 1000);
+            const elapsedSinceStart = Math.floor((now - (table.currentSegmentStartTime || now)) / 1000);
             // total elapsed time is previous elapsed time + current segment's elapsed time
             setElapsedTime((table.elapsedTime || 0) + elapsedSinceStart);
         };
@@ -80,13 +80,15 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         clearInterval(interval);
       }
     };
-  }, [table.status, table.startTime, table.elapsedTime]);
+  }, [table.status, table.currentSegmentStartTime, table.elapsedTime]);
 
   const handleStart = () => {
     if (!tableRef) return;
+    const now = Date.now();
     setDocumentNonBlocking(tableRef, {
         status: 'in-use',
-        startTime: Date.now(),
+        startTime: now,
+        currentSegmentStartTime: now,
         elapsedTime: 0,
         sessionItems: [],
         lastPausedTime: null
@@ -95,16 +97,16 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
 
   const handlePause = () => {
-    if (!tableRef || !table.startTime) return;
+    if (!tableRef || !table.currentSegmentStartTime) return;
     const now = Date.now();
-    const elapsedSinceStart = Math.floor((now - table.startTime) / 1000);
+    const elapsedSinceStart = Math.floor((now - table.currentSegmentStartTime) / 1000);
     const newElapsedTime = (table.elapsedTime || 0) + elapsedSinceStart;
     
     updateDocumentNonBlocking(tableRef, { 
       status: 'paused',
       elapsedTime: newElapsedTime,
       lastPausedTime: now,
-      startTime: 0 // Reset start time as we now rely on elapsedTime
+      currentSegmentStartTime: 0 // Reset current segment start time
     });
     onSessionChange?.();
   };
@@ -113,7 +115,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     if (!tableRef) return;
     updateDocumentNonBlocking(tableRef, { 
         status: 'in-use',
-        startTime: Date.now(), // Set new start time for current running segment
+        currentSegmentStartTime: Date.now(), // Set new start time for current running segment
         lastPausedTime: null,
     });
     onSessionChange?.();
@@ -136,6 +138,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           status: 'available',
           elapsedTime: 0,
           startTime: 0,
+          currentSegmentStartTime: 0,
           sessionItems: [],
           lastPausedTime: null,
         });
@@ -312,3 +315,10 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   );
 }
 
+
+
+declare module '@/lib/types' {
+    interface BilliardTable {
+        currentSegmentStartTime?: number;
+    }
+}
