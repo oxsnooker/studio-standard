@@ -21,13 +21,14 @@ import { useUser } from '@/firebase';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { generateBillPdf } from '@/lib/generate-pdf';
 
 interface EndSessionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
-  onSessionEnd: (bill: Omit<Bill, 'id'>, generatePdf: boolean) => void;
+  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
 }
 
 export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
@@ -65,9 +66,9 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process payment. User not logged in.' });
         return;
     }
-
+    const endTime = Date.now();
     const bill: Omit<Bill, 'id'> = {
-        sessionId: table.id, // Assuming session ID is the table ID for simplicity
+        sessionId: table.id,
         billDate: new Date().toISOString(),
         totalAmount: totalBill,
         amountPaid: totalBill,
@@ -78,11 +79,17 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         itemsBill: itemsBill,
         notes: notes,
         startTime: table.startTime,
-        endTime: Date.now(),
+        endTime: endTime,
         duration: elapsedTime,
     };
 
-    onSessionEnd(bill, shouldGeneratePdf);
+    if (shouldGeneratePdf) {
+        // We pass the full bill object with a temporary ID for the PDF.
+        // The final ID will be generated in the transaction.
+        generateBillPdf({ ...bill, id: 'temp-bill-id' }, table.name);
+    }
+    
+    onSessionEnd(bill);
     handleClose();
   }
 
@@ -106,7 +113,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
             </div>
             <div className="flex justify-between items-center font-medium">
               <span>Table Cost:</span> 
-              <span className="font-mono">₹{tableBill.toFixed(2)}</span>
+              <span className="font-mono">Rs. {tableBill.toFixed(2)}</span>
             </div>
 
             {table.sessionItems.length > 0 && (
@@ -114,13 +121,13 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                  <Separator className="my-2"/>
                  <div className="flex justify-between items-center font-medium">
                   <span>Products Cost:</span>
-                  <span className="font-mono">₹{itemsBill.toFixed(2)}</span>
+                  <span className="font-mono">Rs. {itemsBill.toFixed(2)}</span>
                  </div>
                  <div className="pl-4 border-l-2 border-dashed border-muted-foreground/50 ml-1 space-y-1 mt-1">
                   {table.sessionItems.map(item => (
                       <div key={item.product.id} className="flex justify-between text-sm text-muted-foreground">
                           <span>{item.quantity}x {item.product.name}</span>
-                          <span className="font-mono">₹{(item.quantity * item.product.price).toFixed(2)}</span>
+                          <span className="font-mono">Rs. {(item.quantity * item.product.price).toFixed(2)}</span>
                       </div>
                   ))}
                  </div>
@@ -131,7 +138,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
 
             <div className="flex justify-between text-lg font-bold">
               <span>Total Bill:</span> 
-              <span className="font-mono">₹{totalBill.toFixed(2)}</span>
+              <span className="font-mono">Rs. {totalBill.toFixed(2)}</span>
             </div>
 
 
