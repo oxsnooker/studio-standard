@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -160,7 +161,7 @@ export default function MembershipsPage() {
                                 <TableRow key={plan.id}>
                                     <TableCell className="font-medium">{plan.name}</TableCell>
                                     <TableCell>{plan.totalHours} hours</TableCell>
-                                    <TableCell>₹{plan.price.toFixed(2)}</TableCell>
+                                    <TableCell>Rs.{plan.price.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => openPlanDialog(plan)}>
                                             <Pencil className="h-4 w-4" />
@@ -232,3 +233,4 @@ export default function MembershipsPage() {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -52,7 +53,7 @@ export default function CustomersPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    // State for plans
+    // State for plans (needed for dropdown)
     const plansQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return collection(firestore, 'memberships');
@@ -310,3 +311,4 @@ export default function CustomersPage() {
     </div>
   );
 }
+
