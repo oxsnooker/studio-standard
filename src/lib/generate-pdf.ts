@@ -60,7 +60,7 @@ export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elaps
         'Table Time', 
         `₹${(bill.tableBill / (elapsedTime / 3600 || 1)).toFixed(2)} / hr`, // Calculate hourly rate, avoid division by zero
         formatTime(elapsedTime), 
-        `₹${bill.tableBill.toFixed(2)}`
+        `₹${Math.floor(bill.tableBill).toFixed(2)}`
     ],
     // Product Cost Rows
     ...bill.sessionItems.map(item => [
