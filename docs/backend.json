@@ -245,12 +245,17 @@
             "type": "string",
             "format": "date-time",
             "description": "The date the membership expires."
+        },
+        "balance": {
+          "type": "number",
+          "description": "The customer's current balance. A positive value means credit, a negative value means debt."
         }
       },
       "required": [
         "id",
         "firstName",
-        "lastName"
+        "lastName",
+        "balance"
       ]
     },
     "Product": {
@@ -529,3 +534,4 @@
     "reasoning": "The Firestore data structure is designed to support the Cue Controller application, prioritizing security, scalability, and ease of debugging. It incorporates role-based access control and denormalization techniques to optimize rule simplicity and data integrity.\n\n**Authorization Independence (CRITICAL):**\nTo avoid hierarchical authorization dependencies, the design denormalizes authorization context, storing necessary attributes within subcollections. For example, to determine if a staff member can modify a session, the staffId is copied into the sessions documents. This denormalization avoids the need for `get()` calls in security rules, allowing atomic operations and easier debugging. For collaborative data, the 'Staff' entity `role` field is leveraged, allowing staff-specific rules without complex `get()` calls.\n\n**Structural Segregation:**\nThe database segregates data based on access requirements. Staff and admin data is stored in the `staff` collection.  Other data, such as `tables`, `sessions`, and `products`, have uniform security postures.\n\n**Access Modeling:**\n*   **Staff:** Staff data is stored in the `/staff/{staffId}` collection, enabling path-based ownership and simple read/write rules based on `request.auth.uid`.\n*   **Sessions:** Sessions are stored in the `/sessions/{sessionId}` collection.  The `staffId` field facilitates filtering sessions based on the staff member who started them.\n\n**QAPs (Rules are not Filters):**\nThe structure is optimized to prevent filtering operations within security rules. By storing related data in a flat structure with denormalized authorization fields, list operations can be secured without complex filtering.  For example, listing sessions can be secured by checking if the requesting user's `uid` matches the `staffId` in the session document.\n\n**Invariants:**\nThe structure supports data integrity through careful consideration of ownership, timestamps, and denormalized data.  Timestamps within the `Session` and `Bill` entities are maintained to track history, and the `staffId` is maintained across related entities to ensure consistent ownership and authorization."
   }
 }
+    

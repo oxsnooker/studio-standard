@@ -83,7 +83,7 @@ export default function CustomersPage() {
         const isMembershipSelected = newCustomerMembershipId && newCustomerMembershipId !== 'none';
         const plan = plans?.find(p => p.id === newCustomerMembershipId);
         
-        const customerData: Omit<Customer, 'id'> & {id?: string} = {
+        const customerData: Omit<Customer, 'id' | 'balance'> & {id?: string} = {
             firstName: newCustomerFirstName,
             lastName: newCustomerLastName,
             phone: newCustomerPhone,
@@ -100,7 +100,7 @@ export default function CustomersPage() {
              toast({ title: 'Customer Updated', description: `${newCustomerFirstName} ${newCustomerLastName}'s details have been updated.` });
         } else {
             const customersCollection = collection(firestore, 'customers');
-            addDocumentNonBlocking(customersCollection, customerData);
+            addDocumentNonBlocking(customersCollection, {...customerData, balance: 0});
             toast({ title: 'Customer Added', description: `${newCustomerFirstName} ${newCustomerLastName} has been added.` });
         }
 
@@ -177,6 +177,7 @@ export default function CustomersPage() {
                             <TableHead>Remaining Hours</TableHead>
                             <TableHead>Valid From</TableHead>
                             <TableHead>Valid Till</TableHead>
+                            <TableHead>Balance</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                         </TableHeader>
@@ -184,6 +185,7 @@ export default function CustomersPage() {
                             {isLoadingCustomers ? (
                                 [...Array(3)].map((_, i) => (
                                     <TableRow key={i}>
+                                        <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                         <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                         <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
                                         <TableCell><div className="h-6 w-full animate-pulse rounded-md bg-card" /></TableCell>
@@ -202,6 +204,7 @@ export default function CustomersPage() {
                                     <TableCell>{customer.remainingHours} hours</TableCell>
                                     <TableCell>{customer.validFrom ? format(new Date(customer.validFrom), "PPP") : 'N/A'}</TableCell>
                                     <TableCell>{customer.validTill ? format(new Date(customer.validTill), "PPP") : 'N/A'}</TableCell>
+                                    <TableCell>Rs. {customer.balance?.toFixed(2) || '0.00'}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => openCustomerDialog(customer)}>
                                             <Pencil className="h-4 w-4" />
@@ -309,3 +312,5 @@ export default function CustomersPage() {
     </div>
   );
 }
+
+    

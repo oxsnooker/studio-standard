@@ -35,9 +35,6 @@ export interface BilliardTable {
   lastPausedTime?: number | null;
   createdAt?: number;
   currentSegmentStartTime?: number;
-  customerId?: string | null;
-  customerName?: string | null;
-  customer?: Customer; // Denormalized customer data
 }
 
 export interface Membership {
@@ -58,6 +55,7 @@ export interface Customer {
   remainingHours: number;
   validFrom: string | null;
   validTill: string | null;
+  balance: number;
 }
 
 
@@ -83,3 +81,5 @@ export interface Bill {
         remainingHours: number;
     };
 }
+
+    
