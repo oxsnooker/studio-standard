@@ -27,18 +27,20 @@ export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elaps
 
   const sessionEndTime = new Date(bill.billDate);
   const sessionStartTime = new Date(sessionEndTime.getTime() - elapsedTime * 1000);
+  
+  const sessionDetailsBody = [
+    ['Billing Date', format(sessionEndTime, 'PPP')],
+    ['Start Time', format(sessionStartTime, 'p')],
+    ['End Time', format(sessionEndTime, 'p')],
+    ['Total Duration', formatTime(elapsedTime)],
+    ['Payment Method', bill.paymentMethod.toUpperCase()],
+  ];
 
   // Session & Payment Details
   doc.autoTable({
     startY: finalY,
     head: [['Session & Payment Details']],
-    body: [
-        ['Billing Date', format(sessionEndTime, 'PPP')],
-        ['Start Time', format(sessionStartTime, 'p')],
-        ['End Time', format(sessionEndTime, 'p')],
-        ['Total Duration', formatTime(elapsedTime)],
-        ['Payment Method', bill.paymentMethod.toUpperCase()],
-    ],
+    body: sessionDetailsBody,
     theme: 'grid',
     headStyles: { fillColor: [38, 166, 154], halign: 'center' }, // Teal
     columnStyles: {
@@ -49,25 +51,28 @@ export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elaps
 
 
   // Items Breakdown (Table & Products)
+  const itemsBody = [
+    // Table Cost Row
+    [
+        'Table Time', 
+        `₹${(bill.tableBill / (elapsedTime / 3600 || 1)).toFixed(2)} / hr`, // Calculate hourly rate, avoid division by zero
+        formatTime(elapsedTime), 
+        `₹${bill.tableBill.toFixed(2)}`
+    ],
+    // Product Cost Rows
+    ...bill.sessionItems.map(item => [
+        item.product.name,
+        `₹${item.product.price.toFixed(2)}`,
+        item.quantity,
+        `₹${(item.product.price * item.quantity).toFixed(2)}`
+    ]),
+  ];
+
+
   doc.autoTable({
     startY: finalY,
     head: [['Description', 'Rate / Price', 'Qty / Time', 'Amount (INR)']],
-    body: [
-        // Table Cost Row
-        [
-            'Table Time', 
-            `₹${(bill.tableBill / (elapsedTime / 3600)).toFixed(2)} / hr`, // Calculate hourly rate
-            formatTime(elapsedTime), 
-            `₹${bill.tableBill.toFixed(2)}`
-        ],
-        // Product Cost Rows
-        ...bill.sessionItems.map(item => [
-            item.product.name,
-            `₹${item.product.price.toFixed(2)}`,
-            item.quantity,
-            `₹${(item.product.price * item.quantity).toFixed(2)}`
-        ]),
-    ],
+    body: itemsBody,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185] }, // Blue
     foot: [
