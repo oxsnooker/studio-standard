@@ -35,6 +35,9 @@ export interface BilliardTable {
   lastPausedTime?: number | null;
   createdAt?: number;
   currentSegmentStartTime?: number;
+  customerId?: string | null;
+  customerName?: string | null;
+  customer?: Customer; // Denormalized customer data
 }
 
 export interface Membership {
@@ -49,8 +52,8 @@ export interface Customer {
   id: string;
   firstName: string;
   lastName: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   membershipId: string | null;
   remainingHours: number;
   validFrom: string | null;
@@ -61,11 +64,11 @@ export interface Customer {
 export interface Bill {
     id: string;
     sessionId: string;
-    customerId?: string;
+    customerId?: string | null;
     billDate: string; // ISO 8601 string
     totalAmount: number;
     amountPaid: number;
-    paymentMethod: 'cash' | 'upi';
+    paymentMethod: 'cash' | 'upi' | 'member';
     staffId: string;
     sessionItems: SessionItem[];
     tableBill: number;
@@ -74,4 +77,9 @@ export interface Bill {
     startTime: number;
     endTime: number;
     duration: number;
+    memberDetails?: {
+        name: string;
+        hoursUsed: number;
+        remainingHours: number;
+    };
 }

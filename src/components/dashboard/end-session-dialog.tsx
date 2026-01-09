@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { BilliardTable, Bill } from '@/lib/types';
 import { getSuggestedNotes } from '@/lib/actions';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/firebase';
@@ -36,13 +36,28 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const { user } = useUser();
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'member'>('cash');
   const [shouldGeneratePdf, setShouldGeneratePdf] = useState(true);
   
+  const isMember = useMemo(() => !!table.customer?.membershipId, [table.customer]);
+  const sessionHours = useMemo(() => elapsedTime / 3600, [elapsedTime]);
 
   const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
   const itemsBill = useMemo(() => table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [table.sessionItems]);
-  const totalBill = useMemo(() => Math.floor(tableBill + itemsBill), [tableBill, itemsBill]);
+  const totalBill = useMemo(() => {
+    if (paymentMethod === 'member') {
+        return Math.floor(itemsBill); // Members only pay for items
+    }
+    return Math.floor(tableBill + itemsBill);
+  }, [tableBill, itemsBill, paymentMethod]);
+
+  useEffect(() => {
+      if (isMember) {
+          setPaymentMethod('member');
+      } else {
+          setPaymentMethod('cash');
+      }
+  }, [isMember]);
 
   const handleGenerateNotes = () => {
     startTransition(async () => {
@@ -66,6 +81,15 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process payment. User not logged in.' });
         return;
     }
+    if (paymentMethod === 'member' && (table.customer?.remainingHours || 0) < sessionHours) {
+        toast({
+            variant: 'destructive',
+            title: 'Insufficient Member Hours',
+            description: `Customer has only ${table.customer?.remainingHours?.toFixed(2)} hours left.`,
+        });
+        return;
+    }
+
     const endTime = Date.now();
     const bill: Omit<Bill, 'id'> = {
         sessionId: table.id,
@@ -81,12 +105,12 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         startTime: table.startTime,
         endTime: endTime,
         duration: elapsedTime,
+        customerId: table.customerId
     };
 
     if (shouldGeneratePdf) {
-        // We pass the full bill object with a temporary ID for the PDF.
-        // The final ID will be generated in the transaction.
-        generateBillPdf({ ...bill, id: 'temp-bill-id' }, table.name);
+        const pdfBillData: Bill = { ...bill, id: 'temp-bill-id' };
+        generateBillPdf(pdfBillData, table.name, table.customer);
     }
     
     onSessionEnd(bill);
@@ -107,6 +131,13 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
           <DialogDescription>Review the final bill and confirm payment.</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-4">
+            {table.customerName && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-secondary">
+                    <User className="h-4 w-4 text-secondary-foreground"/>
+                    <span className="text-sm font-semibold text-secondary-foreground">{table.customerName}</span>
+                    {table.customer?.membershipId && <span className="text-xs text-muted-foreground">(Member)</span>}
+                </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Table Time:</span> 
               <span className="font-mono">{new Date(elapsedTime * 1000).toISOString().slice(11, 19)}</span>
@@ -147,19 +178,24 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
             <div className="space-y-2 pt-2">
                 <Label>Payment Method</Label>
                 <RadioGroup
-                    defaultValue="cash"
                     value={paymentMethod}
-                    onValueChange={(value: 'cash' | 'upi') => setPaymentMethod(value)}
+                    onValueChange={(value: 'cash' | 'upi' | 'member') => setPaymentMethod(value)}
                     className="flex gap-4"
                 >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="cash" id="cash" />
+                      <RadioGroupItem value="cash" id="cash" disabled={isMember} />
                       <Label htmlFor="cash">Cash</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="upi" id="upi" />
+                      <RadioGroupItem value="upi" id="upi" disabled={isMember}/>
                       <Label htmlFor="upi">UPI</Label>
                     </div>
+                    {isMember && (
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="member" id="member" />
+                            <Label htmlFor="member">Member Hours ({table.customer?.remainingHours?.toFixed(2)} left)</Label>
+                        </div>
+                    )}
                 </RadioGroup>
             </div>
 

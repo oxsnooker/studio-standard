@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -33,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,8 +90,8 @@ export default function CustomersPage() {
             email: newCustomerEmail,
             membershipId: isMembershipSelected ? newCustomerMembershipId : null,
             remainingHours: isMembershipSelected ? (plan?.totalHours || 0) : 0,
-            validFrom: newCustomerValidFrom,
-            validTill: newCustomerValidTill,
+            validFrom: newCustomerValidFrom || null,
+            validTill: newCustomerValidTill || null,
         }
 
         if(editingCustomer) {
@@ -122,8 +120,8 @@ export default function CustomersPage() {
             setEditingCustomer(customer);
             setNewCustomerFirstName(customer.firstName);
             setNewCustomerLastName(customer.lastName);
-            setNewCustomerPhone(customer.phone);
-            setNewCustomerEmail(customer.email);
+            setNewCustomerPhone(customer.phone || '');
+            setNewCustomerEmail(customer.email || '');
             setNewCustomerMembershipId(customer.membershipId || 'none');
             setNewCustomerValidFrom(customer.validFrom || '');
             setNewCustomerValidTill(customer.validTill || '');
@@ -311,4 +309,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-

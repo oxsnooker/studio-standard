@@ -13,11 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
-import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText, Clock, PlayCircle, PauseCircle } from 'lucide-react';
+import type { BilliardTable, SessionItem, Bill, Customer } from '@/lib/types';
+import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText, Clock, PlayCircle, PauseCircle, User } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
-import { doc, collection, runTransaction, DocumentReference } from 'firebase/firestore';
+import { SelectCustomerDialog } from './select-customer-dialog';
+import { doc, collection, runTransaction, DocumentReference, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   const [elapsedTime, setElapsedTime] = useState(table.elapsedTime || 0);
   const [isEndSessionOpen, setEndSessionOpen] = useState(false);
   const [isAddItemOpen, setAddItemOpen] = useState(false);
+  const [isSelectCustomerOpen, setSelectCustomerOpen] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -127,9 +129,28 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     try {
       await runTransaction(firestore, async (transaction) => {
         const newBillRef = doc(collection(firestore, 'bills'));
-        const finalBill: Bill = { ...billData, id: newBillRef.id };
-        transaction.set(newBillRef, finalBill);
+        
+        let finalBill: Bill = { 
+            ...billData, 
+            id: newBillRef.id,
+            customerId: table.customerId,
+        };
 
+        // If member, deduct hours
+        if (table.customerId && table.customer?.membershipId) {
+            const customerRef = doc(firestore, 'customers', table.customerId);
+            const sessionHours = billData.duration / 3600;
+            const remaining = Math.max(0, (table.customer.remainingHours || 0) - sessionHours);
+            transaction.update(customerRef, { remainingHours: remaining });
+            // Add member details to bill
+            finalBill.memberDetails = {
+                name: `${table.customer.firstName} ${table.customer.lastName}`,
+                hoursUsed: sessionHours,
+                remainingHours: remaining
+            }
+        }
+
+        transaction.set(newBillRef, finalBill);
         transaction.update(tableRef, {
           status: 'available',
           elapsedTime: 0,
@@ -137,6 +158,8 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           currentSegmentStartTime: 0,
           sessionItems: [],
           lastPausedTime: null,
+          customerId: null,
+          customerName: null,
         });
       });
       
@@ -180,6 +203,17 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     onSessionChange?.();
   };
 
+  const handleSelectCustomer = (customer: Customer) => {
+    if (!tableRef) return;
+    updateDocumentNonBlocking(tableRef, { 
+        customerId: customer.id,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        customer: customer, // denormalize customer data
+    });
+    setSelectCustomerOpen(false);
+    onSessionChange?.();
+    toast({ title: 'Customer Selected', description: `${customer.firstName} ${customer.lastName} assigned to ${table.name}.` });
+  }
 
   const getStatusBadge = () => {
     switch (table.status) {
@@ -205,6 +239,12 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             {getStatusBadge()}
           </div>
           <CardDescription>Rs. {table.hourlyRate.toFixed(2)} / hour</CardDescription>
+          {table.customerName && (
+              <div className="flex items-center gap-2 pt-1">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{table.customerName}</span>
+              </div>
+          )}
         </CardHeader>
         <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
             <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider text-center">
@@ -284,25 +324,40 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           )}
           <Button 
             variant="secondary" 
-            className="col-span-2" 
+            className="col-span-1" 
             disabled={table.status === 'available'}
             onClick={() => setAddItemOpen(true)}
           >
               <UtensilsCrossed className="mr-2 h-4 w-4" /> Add Items
           </Button>
+           <Button 
+            variant="secondary" 
+            className="col-span-1" 
+            disabled={table.status === 'available'}
+            onClick={() => setSelectCustomerOpen(true)}
+          >
+              <User className="mr-2 h-4 w-4" /> Customer
+          </Button>
         </CardFooter>
       </Card>
-      <EndSessionDialog
-        isOpen={isEndSessionOpen}
-        onOpenChange={setEndSessionOpen}
-        table={table}
-        elapsedTime={elapsedTime}
-        onSessionEnd={handleSessionEnd}
-      />
+      {isEndSessionOpen && (
+        <EndSessionDialog
+            isOpen={isEndSessionOpen}
+            onOpenChange={setEndSessionOpen}
+            table={table}
+            elapsedTime={elapsedTime}
+            onSessionEnd={handleSessionEnd}
+        />
+      )}
       <AddItemDialog
         isOpen={isAddItemOpen}
         onOpenChange={setAddItemOpen}
         onAddItem={handleAddItem}
+      />
+      <SelectCustomerDialog
+        isOpen={isSelectCustomerOpen}
+        onOpenChange={setSelectCustomerOpen}
+        onSelectCustomer={handleSelectCustomer}
       />
     </>
   );

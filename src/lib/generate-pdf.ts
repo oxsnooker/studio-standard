@@ -4,7 +4,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
-import type { Bill } from './types';
+import type { Bill, Customer } from './types';
 
 function formatDuration(seconds: number) {
   if (isNaN(seconds) || seconds < 0) {
@@ -16,7 +16,7 @@ function formatDuration(seconds: number) {
   return [h, m, s].map(v => (v < 10 ? '0' + v : v)).join(':');
 }
 
-export const generateBillPdf = (bill: Bill, tableName: string) => {
+export const generateBillPdf = (bill: Bill, tableName: string, customer?: Customer | null) => {
   const doc = new jsPDF();
 
   // Header
@@ -32,13 +32,17 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
   doc.line(15, 32, 195, 32);
 
   // Bill Details
-  autoTable(doc, {
-    startY: 35,
-    body: [
+  const billDetails = [
       ['Bill Number:', bill.id],
       ['Table Name:', tableName],
       ['Date:', format(new Date(bill.billDate), 'dd MMM yyyy, hh:mm:ss a')],
-    ],
+  ];
+  if (customer) {
+      billDetails.push(['Customer:', `${customer.firstName} ${customer.lastName}`]);
+  }
+  autoTable(doc, {
+    startY: 35,
+    body: billDetails,
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 1 },
     columnStyles: { 0: { fontStyle: 'bold' } },
@@ -58,6 +62,29 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold' } },
   });
+  
+  // Cost Breakdown
+  const costData = [];
+  if (bill.paymentMethod === 'member') {
+      costData.push(['Member Hours Used', bill.memberDetails?.hoursUsed.toFixed(2) || '0.00']);
+  } else {
+      costData.push(['Table Time Cost', `Rs. ${bill.tableBill.toFixed(2)}`]);
+  }
+
+  if (bill.itemsBill > 0) {
+    costData.push(['Products Cost', `Rs. ${bill.itemsBill.toFixed(2)}`]);
+  }
+  
+  if (costData.length > 0) {
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 8,
+        head: [['Description', 'Amount']],
+        body: costData,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+        columnStyles: { 0: { fontStyle: 'bold' } },
+    });
+  }
 
   // Items Purchased
   if (bill.sessionItems.length > 0) {
@@ -75,25 +102,6 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
     });
   }
 
-  // Cost Breakdown
-  const costData = [
-    ['Table Time Cost', `Rs. ${bill.tableBill.toFixed(2)}`],
-  ];
-  if (bill.itemsBill > 0) {
-    costData.push(['Products Cost', `Rs. ${bill.itemsBill.toFixed(2)}`]);
-  }
-  
-  autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 5,
-      head: [['Description', 'Amount']],
-      body: costData,
-      theme: 'striped',
-      headStyles: { fillColor: [231, 76, 60], textColor: 255, fontStyle: 'bold' },
-      columnStyles: { 0: { fontStyle: 'bold' } },
-      didDrawPage: (data) => {
-        data.settings.margin.top = 10;
-    }
-  });
 
   // Final Costs
   const finalY = (doc as any).lastAutoTable.finalY || 100;
