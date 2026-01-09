@@ -12,43 +12,30 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import type { BilliardTable, Bill, Customer } from '@/lib/types';
+import type { BilliardTable, Bill } from '@/lib/types';
 import { getSuggestedNotes } from '@/lib/actions';
 import { Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useFirestore, useUser } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, serverTimestamp, query, where, getDocs, runTransaction, doc } from 'firebase/firestore';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
-import { Input } from '../ui/input';
-import { Alert, AlertDescription } from '../ui/alert';
 
 interface EndSessionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
-  onSessionEnd: (bill: Omit<Bill, 'id'>, customerId?: string, hoursToDeduct?: number) => void;
+  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
 }
-
-type VerificationStatus = 'idle' | 'verifying' | 'verified' | 'not_found' | 'expired' | 'no_membership';
 
 export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
   const [notes, setNotes] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const firestore = useFirestore();
   const { user } = useUser();
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi' | 'membership'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
   
-  // State for membership verification
-  const [membershipMobile, setMembershipMobile] = useState('');
-  const [verifiedCustomer, setVerifiedCustomer] = useState<Customer | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('idle');
-  const [isVerifying, setIsVerifying] = useState(false);
-
 
   const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
   const itemsBill = useMemo(() => table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [table.sessionItems]);
@@ -70,80 +57,18 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
     });
   };
 
-  const handleVerifyMembership = async () => {
-    if (!firestore || !membershipMobile) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a mobile number.' });
-        return;
-    }
-    setIsVerifying(true);
-    setVerifiedCustomer(null);
-    setVerificationStatus('verifying');
-
-    try {
-        const customersRef = collection(firestore, 'customers');
-        const q = query(customersRef, where('phone', '==', membershipMobile));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            setVerificationStatus('not_found');
-            return;
-        }
-
-        const customerDoc = querySnapshot.docs[0];
-        const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
-
-        if (!customerData.membershipId) {
-            setVerificationStatus('no_membership');
-            setVerifiedCustomer(customerData);
-            return;
-        }
-        
-        const now = new Date();
-        const validTill = customerData.validTill ? new Date(customerData.validTill) : null;
-
-        if (validTill && validTill >= now) {
-            setVerificationStatus('verified');
-            setVerifiedCustomer(customerData);
-        } else {
-            setVerificationStatus('expired');
-            setVerifiedCustomer(customerData);
-        }
-
-    } catch (error) {
-        console.error("Verification failed:", error);
-        toast({ variant: 'destructive', title: 'Verification Error', description: 'Could not verify membership.'});
-        setVerificationStatus('idle');
-    } finally {
-        setIsVerifying(false);
-    }
-  }
   
   const handleConfirmPayment = () => {
-    if (!firestore || !user) {
+    if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process payment. User not logged in.' });
         return;
     }
 
-    const sessionHours = elapsedTime / 3600;
-
-    if (paymentMethod === 'membership') {
-        if (!verifiedCustomer || verificationStatus !== 'verified') {
-            toast({ variant: 'destructive', title: 'Verification Required', description: 'Please verify a valid active membership.' });
-            return;
-        }
-        if (verifiedCustomer.remainingHours < sessionHours) {
-            toast({ variant: 'destructive', title: 'Insufficient Hours', description: `Member only has ${verifiedCustomer.remainingHours.toFixed(2)} hours left.` });
-            return;
-        }
-    }
-
-
     const bill: Omit<Bill, 'id'> = {
         sessionId: table.id, // Assuming session ID is the table ID for simplicity
-        customerId: verifiedCustomer?.id,
         billDate: new Date().toISOString(),
         totalAmount: totalBill,
-        amountPaid: paymentMethod === 'membership' ? itemsBill : totalBill, // For membership, only products are paid
+        amountPaid: totalBill,
         paymentMethod: paymentMethod,
         staffId: user.uid,
         sessionItems: table.sessionItems,
@@ -152,21 +77,15 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         notes: notes,
     };
 
-    onSessionEnd(bill, verifiedCustomer?.id, paymentMethod === 'membership' ? sessionHours : 0);
+    onSessionEnd(bill);
     handleClose();
   }
 
   const handleClose = () => {
     setNotes('');
     setPaymentMethod('cash');
-    setMembershipMobile('');
-    setVerifiedCustomer(null);
-    setVerificationStatus('idle');
     onOpenChange(false);
   }
-
-  const isConfirmDisabled = paymentMethod === 'membership' && verificationStatus !== 'verified';
-
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -207,9 +126,8 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
 
             <div className="flex justify-between text-lg font-bold">
               <span>Total Bill:</span> 
-              <span className="font-mono">₹{paymentMethod === 'membership' ? itemsBill.toFixed(2) : totalBill.toFixed(2)}</span>
+              <span className="font-mono">₹{totalBill.toFixed(2)}</span>
             </div>
-            {paymentMethod === 'membership' && <p className="text-xs text-muted-foreground text-right -mt-2">Table time covered by membership</p>}
 
 
             <Separator className="my-2" />
@@ -219,7 +137,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                 <RadioGroup
                     defaultValue="cash"
                     value={paymentMethod}
-                    onValueChange={(value: 'cash' | 'upi' | 'membership') => setPaymentMethod(value)}
+                    onValueChange={(value: 'cash' | 'upi') => setPaymentMethod(value)}
                     className="flex gap-4"
                 >
                     <div className="flex items-center space-x-2">
@@ -230,40 +148,8 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
                       <RadioGroupItem value="upi" id="upi" />
                       <Label htmlFor="upi">UPI</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="membership" id="membership" />
-                      <Label htmlFor="membership">Membership</Label>
-                    </div>
                 </RadioGroup>
             </div>
-            
-            {paymentMethod === 'membership' && (
-                <div className="space-y-3 pt-4">
-                    <Label htmlFor="membership-mobile">Customer Mobile Number</Label>
-                    <div className="flex gap-2">
-                        <Input 
-                            id="membership-mobile"
-                            placeholder='Enter mobile number'
-                            value={membershipMobile}
-                            onChange={(e) => setMembershipMobile(e.target.value)}
-                        />
-                        <Button onClick={handleVerifyMembership} disabled={isVerifying}>
-                            {isVerifying ? 'Verifying...' : 'Verify'}
-                        </Button>
-                    </div>
-                    {verificationStatus !== 'idle' && verificationStatus !== 'verifying' && (
-                        <Alert variant={verificationStatus === 'verified' ? 'default' : 'destructive'} className="mt-2">
-                            <AlertDescription>
-                                {verificationStatus === 'not_found' && "No customer found with this mobile number."}
-                                {verificationStatus === 'no_membership' && `${verifiedCustomer?.firstName} is not a member.`}
-                                {verificationStatus === 'expired' && `Membership for ${verifiedCustomer?.firstName} has expired.`}
-                                {verificationStatus === 'verified' && `Verified: ${verifiedCustomer?.firstName} ${verifiedCustomer?.lastName} (${verifiedCustomer?.remainingHours.toFixed(2)} hours left)`}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                </div>
-            )}
-
 
           <div className="space-y-2 pt-4">
             <Label htmlFor="notes">Session Notes (Optional)</Label>
@@ -286,7 +172,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
-          <Button onClick={handleConfirmPayment} disabled={isConfirmDisabled}>Download Bill &amp; End Session</Button>
+          <Button onClick={handleConfirmPayment}>Download Bill &amp; End Session</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -299,5 +185,3 @@ declare module '@/lib/types' {
         notes?: string;
     }
 }
-
-    

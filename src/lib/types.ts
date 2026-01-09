@@ -64,7 +64,7 @@ export interface Bill {
     billDate: string; // ISO 8601 string
     totalAmount: number;
     amountPaid: number;
-    paymentMethod: 'cash' | 'upi' | 'membership';
+    paymentMethod: 'cash' | 'upi';
     staffId: string;
     sessionItems: SessionItem[];
     tableBill: number;
