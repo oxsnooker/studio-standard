@@ -6,11 +6,12 @@ import {
   BarChart3,
   LayoutGrid,
   FileText,
-  UserPlus,
+  User,
   UtensilsCrossed,
   Award,
   Boxes,
   ClipboardList,
+  Users,
 } from 'lucide-react';
 import { Logo } from './logo';
 import { cn } from '@/lib/utils';
@@ -25,7 +26,8 @@ const adminNavItems = [
   { href: '/dashboard/products', label: 'Snacks & Drinks', icon: UtensilsCrossed },
   { href: '/dashboard/stock', label: 'Stock', icon: Boxes },
   { href: '/dashboard/memberships', label: 'Memberships', icon: Award },
-  { href: '/dashboard/staff', label: 'Staff', icon: UserPlus },
+  { href: '/dashboard/customers', label: 'Customers', icon: Users },
+  { href: '/dashboard/staff', label: 'Staff', icon: User },
   { href: '/dashboard/reports', label: 'Reports', icon: FileText },
 ];
 
