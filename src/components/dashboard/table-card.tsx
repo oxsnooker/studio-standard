@@ -23,7 +23,6 @@ import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/no
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
-import { generateBillPdf } from '@/lib/generate-pdf';
 import { format } from 'date-fns';
 
 interface TableCardProps {
@@ -143,9 +142,6 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
           lastPausedTime: null,
         });
       });
-
-      // Generate and download PDF after transaction is successful
-      generateBillPdf(bill, tableName, elapsedTime);
 
       toast({
         title: "Session Completed",

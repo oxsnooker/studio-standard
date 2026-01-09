@@ -172,7 +172,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
-          <Button onClick={handleConfirmPayment}>Download Bill &amp; End Session</Button>
+          <Button onClick={handleConfirmPayment}>End Session</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
