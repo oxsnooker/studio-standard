@@ -53,7 +53,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (table.status === 'in-use' && table.startTime) {
+    if (table.status === 'in-use' && table.currentSegmentStartTime) {
         // Function to calculate elapsed time and set it
         const calculateAndSetElapsedTime = () => {
             const now = Date.now();
@@ -228,7 +228,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
             </div>
             
             <div className="text-xs text-muted-foreground mt-2 grid grid-cols-2 gap-x-4 text-center">
-                {table.status !== 'available' && table.startTime ? (
+                {(table.status === 'in-use' || table.status === 'paused') && table.startTime ? (
                     <div className="flex items-center gap-1">
                         <PlayCircle className="h-3 w-3 text-green-500" />
                         <span>Start: {format(table.startTime, 'p')}</span>
@@ -322,3 +322,4 @@ declare module '@/lib/types' {
         currentSegmentStartTime?: number;
     }
 }
+
