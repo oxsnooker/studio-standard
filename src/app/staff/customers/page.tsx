@@ -88,7 +88,7 @@ export default function StaffCustomersPage() {
                             <TableHead>Name</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Balance</TableHead>
-                            <TableHead className="text-right w-[150px]">Update Balance</TableHead>
+                            <TableHead className="text-right w-[200px]">Update Balance</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -118,8 +118,8 @@ export default function StaffCustomersPage() {
                                                 type="number"
                                                 value={balanceEdits[customer.id] ?? ''}
                                                 onChange={(e) => handleBalanceChange(customer.id, e.target.value)}
-                                                className="h-8 w-24"
-                                                placeholder="New balance"
+                                                className="h-8 w-28"
+                                                placeholder="Update balance"
                                             />
                                             <Button 
                                                 variant="ghost" 
