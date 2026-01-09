@@ -39,7 +39,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
 
   const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
   const itemsBill = useMemo(() => table.sessionItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [table.sessionItems]);
-  const totalBill = useMemo(() => tableBill + itemsBill, [tableBill, itemsBill]);
+  const totalBill = useMemo(() => Math.floor(tableBill + itemsBill), [tableBill, itemsBill]);
 
   const handleGenerateNotes = () => {
     startTransition(async () => {

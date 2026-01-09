@@ -201,7 +201,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
   const tableBill = table.status !== 'available' ? (elapsedTime / 3600 * table.hourlyRate) : 0;
-  const totalBill = tableBill + itemsBill;
+  const totalBill = Math.floor(tableBill + itemsBill);
 
   return (
     <>
@@ -322,5 +322,3 @@ declare module '@/lib/types' {
         currentSegmentStartTime?: number;
     }
 }
-
-

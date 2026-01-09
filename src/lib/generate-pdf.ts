@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -13,6 +14,8 @@ const formatTime = (totalSeconds: number) => {
 
 export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elapsedTime: number) {
   const doc = new jsPDF();
+  const roundedTotal = Math.floor(bill.totalAmount);
+  const roundedPaid = Math.floor(bill.amountPaid);
 
   // Header
   doc.setFontSize(22);
@@ -78,15 +81,15 @@ export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elaps
     foot: [
         [
             { content: 'Total Amount', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-            { content: `₹${bill.totalAmount.toFixed(2)}`, styles: { fontStyle: 'bold' } }
+            { content: `₹${roundedTotal.toFixed(2)}`, styles: { fontStyle: 'bold' } }
         ],
         [
             { content: 'Amount Paid', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-            { content: `₹${bill.amountPaid.toFixed(2)}`, styles: { fontStyle: 'bold' } }
+            { content: `₹${roundedPaid.toFixed(2)}`, styles: { fontStyle: 'bold' } }
         ],
         [
             { content: 'Balance', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
-            { content: `₹${(bill.totalAmount - bill.amountPaid).toFixed(2)}`, styles: { fontStyle: 'bold' } }
+            { content: `₹${(roundedTotal - roundedPaid).toFixed(2)}`, styles: { fontStyle: 'bold' } }
         ]
     ],
     footStyles: {
