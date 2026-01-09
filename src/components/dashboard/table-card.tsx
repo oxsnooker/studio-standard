@@ -31,7 +31,7 @@ interface TableCardProps {
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const seconds = Math.floor(totalSeconds % 60);
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
@@ -51,16 +51,22 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (table.status === 'in-use' && table.startTime) {
-      // Calculate elapsed time since start time and update state
-      const initialElapsed = Math.floor((Date.now() - table.startTime) / 1000);
-      setElapsedTime((table.elapsedTime || 0) + initialElapsed);
+        const calculateAndSetElapsedTime = () => {
+            const now = Date.now();
+            const elapsedSinceStart = Math.floor((now - table.startTime!) / 1000);
+            setElapsedTime((table.elapsedTime || 0) + elapsedSinceStart);
+        };
+        
+        calculateAndSetElapsedTime();
 
-      interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
-      }, 1000);
+        interval = setInterval(() => {
+            setElapsedTime(prev => prev + 1);
+        }, 1000);
+
     } else {
         setElapsedTime(table.elapsedTime || 0);
     }
+
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -81,9 +87,9 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   };
 
   const handlePause = () => {
-    if (!tableRef) return;
+    if (!tableRef || !table.startTime) return;
     const now = Date.now();
-    const elapsedSinceStart = table.startTime ? Math.floor((now - table.startTime) / 1000) : 0;
+    const elapsedSinceStart = Math.floor((now - table.startTime) / 1000);
     const newElapsedTime = (table.elapsedTime || 0) + elapsedSinceStart;
     
     updateDocumentNonBlocking(tableRef, { 
@@ -181,17 +187,9 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         return <Badge variant="destructive">Stopped</Badge>;
     }
   };
-  
-  const currentElapsedTime = useMemo(() => {
-    if (table.status === 'in-use' && table.startTime) {
-        const elapsedSinceStart = Math.floor((Date.now() - table.startTime) / 1000);
-        return (table.elapsedTime || 0) + elapsedSinceStart;
-    }
-    return table.elapsedTime || 0;
-  }, [table.status, table.startTime, table.elapsedTime]);
 
   const itemsBill = table.sessionItems?.reduce((total, item) => total + item.product.price * item.quantity, 0) || 0;
-  const tableBill = table.status !== 'available' ? (currentElapsedTime / 3600 * table.hourlyRate) : 0;
+  const tableBill = table.status !== 'available' ? (elapsedTime / 3600 * table.hourlyRate) : 0;
   const totalBill = tableBill + itemsBill;
 
   return (
@@ -207,7 +205,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
             <div className="flex items-center gap-2 text-4xl font-bold font-mono tracking-wider text-center">
                 <Hourglass className={cn("h-8 w-8", table.status === 'in-use' && 'text-accent animate-pulse')} />
-                <span>{formatTime(currentElapsedTime)}</span>
+                <span>{formatTime(elapsedTime)}</span>
             </div>
             <div className='text-center'>
               <p className="text-sm text-muted-foreground">
@@ -278,7 +276,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         isOpen={isEndSessionOpen}
         onOpenChange={setEndSessionOpen}
         table={table}
-        elapsedTime={currentElapsedTime}
+        elapsedTime={elapsedTime}
         onSessionEnd={handleSessionEnd}
       />
       <AddItemDialog
