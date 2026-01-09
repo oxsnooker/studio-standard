@@ -1,3 +1,6 @@
+
+'use client';
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
@@ -28,58 +31,33 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
   doc.setDrawColor(180, 180, 180);
   doc.line(15, 32, 195, 32);
 
-  // Bill and Table Details
+  // Bill Details
   autoTable(doc, {
     startY: 35,
     body: [
       ['Bill Number:', bill.id],
       ['Table Name:', tableName],
-      ['Date:', format(new Date(bill.billDate), 'dd MMM yyyy')],
+      ['Date:', format(new Date(bill.billDate), 'dd MMM yyyy, hh:mm:ss a')],
     ],
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 1 },
     columnStyles: { 0: { fontStyle: 'bold' } },
   });
 
-  const sessionDetails = [
-      ['Start Time', format(new Date(bill.startTime), 'hh:mm:ss a')],
-      ['End Time', format(new Date(bill.endTime), 'hh:mm:ss a')],
-      ['Total Duration', formatDuration(bill.duration)],
-      ['Payment Method', bill.paymentMethod.toUpperCase()],
-  ];
-
-  // Session Details
+  // Session & Payment Details
   autoTable(doc, {
     startY: (doc as any).lastAutoTable.finalY + 2,
-    head: [['Session Details', '']],
-    body: sessionDetails,
+    head: [['Session & Payment Details', '']],
+    body: [
+        ['Start Time', format(new Date(bill.startTime), 'hh:mm:ss a')],
+        ['End Time', format(new Date(bill.endTime), 'hh:mm:ss a')],
+        ['Total Duration', formatDuration(bill.duration)],
+        ['Payment Method', bill.paymentMethod.toUpperCase()],
+    ],
     theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold' } },
-    didDrawPage: (data) => {
-        data.settings.margin.top = 10;
-    }
   });
-
-
-  // Cost Breakdown
-  const costData = [
-    ['Table Time Cost', `₹${bill.tableBill.toFixed(2)}`],
-  ];
-
-  if (bill.sessionItems.length > 0) {
-      costData.push(['Products Cost', `₹${bill.itemsBill.toFixed(2)}`]);
-  }
-
-  autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 5,
-      head: [['Description', 'Amount']],
-      body: costData,
-      theme: 'striped',
-      headStyles: { fillColor: [231, 76, 60], textColor: 255 },
-      columnStyles: { 0: { fontStyle: 'bold' } },
-  });
-  
 
   // Items Purchased
   if (bill.sessionItems.length > 0) {
@@ -89,13 +67,33 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
       body: bill.sessionItems.map(item => [
         item.product.name,
         item.quantity,
-        `₹${item.product.price.toFixed(2)}`,
-        `₹${(item.product.price * item.quantity).toFixed(2)}`,
+        `Rs. ${item.product.price.toFixed(2)}`,
+        `Rs. ${(item.product.price * item.quantity).toFixed(2)}`,
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     });
   }
+
+  // Cost Breakdown
+  const costData = [
+    ['Table Time Cost', `Rs. ${bill.tableBill.toFixed(2)}`],
+  ];
+  if (bill.itemsBill > 0) {
+    costData.push(['Products Cost', `Rs. ${bill.itemsBill.toFixed(2)}`]);
+  }
+  
+  autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 5,
+      head: [['Description', 'Amount']],
+      body: costData,
+      theme: 'striped',
+      headStyles: { fillColor: [231, 76, 60], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 0: { fontStyle: 'bold' } },
+      didDrawPage: (data) => {
+        data.settings.margin.top = 10;
+    }
+  });
 
   // Final Costs
   const finalY = (doc as any).lastAutoTable.finalY || 100;
@@ -103,7 +101,7 @@ export const generateBillPdf = (bill: Bill, tableName: string) => {
   doc.setFont('helvetica', 'bold');
 
   doc.text('Grand Total:', 130, finalY + 15);
-  doc.text(`₹${bill.totalAmount.toFixed(2)}`, 195, finalY + 15, { align: 'right' });
+  doc.text(`Rs. ${bill.totalAmount.toFixed(2)}`, 195, finalY + 15, { align: 'right' });
 
 
   // Footer
