@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { BilliardTable, Bill } from '@/lib/types';
 import { getSuggestedNotes } from '@/lib/actions';
-import { Sparkles, Download } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useUser } from '@/firebase';
