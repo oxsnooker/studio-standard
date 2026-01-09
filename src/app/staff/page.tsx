@@ -32,7 +32,7 @@ export default function StaffPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <h1 className="font-headline text-3xl md:text-4xl">Table Management</h1>
+        <h1 className="font-headline text-3xl md:text-4xl">THE OX SNOOKER</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
