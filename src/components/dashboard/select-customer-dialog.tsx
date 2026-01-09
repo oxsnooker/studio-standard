@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '../ui/scroll-area';
 import { UserPlus } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 interface SelectCustomerDialogProps {
   isOpen: boolean;
