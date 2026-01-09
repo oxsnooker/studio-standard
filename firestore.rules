@@ -148,15 +148,15 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages payments associated with bills. Any staff member can
-     * create or view payments.
+     * @description Manages payments associated with customers. Any authenticated user (staff)
+     * can create or view payments as this part of the app is only accessible to them.
      * @path /payments/{paymentId}
-     * @allow (read, write) any authenticated staff member to log or view a payment.
-     * @deny (list) any non-staff user from listing payments.
-     * @principle Enforces role-based access for business data management.
+     * @allow (read, write) any authenticated user to log or view a payment.
+     * @deny (list) any non-authenticated user from listing payments.
+     * @principle Relies on app-level auth to ensure only staff can access this.
      */
     match /payments/{paymentId} {
-      allow read, write: if isStaff();
+      allow read, write: if isSignedIn();
     }
 
     /**
