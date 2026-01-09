@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
-import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText } from 'lucide-react';
+import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText, Clock, PlayCircle, PauseCircle } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
 import { doc, collection, runTransaction } from 'firebase/firestore';
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 import { generateBillPdf } from '@/lib/generate-pdf';
+import { format } from 'date-fns';
 
 interface TableCardProps {
   table: BilliardTable;
@@ -53,19 +54,24 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (table.status === 'in-use' && table.startTime) {
+        // Function to calculate elapsed time and set it
         const calculateAndSetElapsedTime = () => {
             const now = Date.now();
-            const elapsedSinceStart = Math.floor((now - table.startTime!) / 1000);
+            // elapsed since the current segment started
+            const elapsedSinceStart = Math.floor((now - (table.startTime || now)) / 1000);
+            // total elapsed time is previous elapsed time + current segment's elapsed time
             setElapsedTime((table.elapsedTime || 0) + elapsedSinceStart);
         };
         
-        calculateAndSetElapsedTime();
+        calculateAndSetElapsedTime(); // Initial calculation
 
         interval = setInterval(() => {
+            // We can just increment here for smoother updates
             setElapsedTime(prev => prev + 1);
         }, 1000);
 
     } else {
+        // If not in-use, just display the stored elapsedTime
         setElapsedTime(table.elapsedTime || 0);
     }
 
@@ -217,6 +223,22 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
                   Total Bill: ₹{totalBill.toFixed(2)}
               </p>
             </div>
+            
+            <div className="text-xs text-muted-foreground mt-2 grid grid-cols-2 gap-x-4 text-center">
+                {table.status !== 'available' && table.startTime ? (
+                    <div className="flex items-center gap-1">
+                        <PlayCircle className="h-3 w-3 text-green-500" />
+                        <span>Start: {format(table.startTime, 'p')}</span>
+                    </div>
+                ) : <div />}
+                {table.status === 'paused' && table.lastPausedTime ? (
+                    <div className="flex items-center gap-1">
+                        <PauseCircle className="h-3 w-3 text-red-500" />
+                        <span>Stop: {format(table.lastPausedTime, 'p')}</span>
+                    </div>
+                ) : <div />}
+            </div>
+
 
             <Separator className='my-2' />
 
@@ -289,3 +311,4 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     </>
   );
 }
+
