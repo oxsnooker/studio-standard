@@ -108,9 +108,9 @@ export default function StaffCustomersPage() {
                                     <TableCell>{customer.phone}</TableCell>
                                     <TableCell className={cn(
                                         "font-mono",
-                                        customer.balance < 0 ? "text-destructive" : "text-green-600"
+                                        (customer.balance ?? 0) < 0 ? "text-destructive" : "text-green-600"
                                     )}>
-                                        Rs. {customer.balance.toFixed(2)}
+                                        Rs. {(customer.balance ?? 0).toFixed(2)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2">
