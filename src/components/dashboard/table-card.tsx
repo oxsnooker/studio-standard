@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,7 +17,7 @@ import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
 import { Hourglass, Pause, Play, Square, UtensilsCrossed, Trash2, FileText } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
-import { doc, collection, runTransaction } from 'firebase/firestore';
+import { doc, collection, runTransaction, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
@@ -116,7 +117,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     setEndSessionOpen(true);
   };
   
-  const handleSessionEnd = async (bill: Omit<Bill, 'id'>) => {
+  const handleSessionEnd = async (bill: Omit<Bill, 'id'>, customerId?: string, hoursToDeduct?: number) => {
     if (!firestore || !tableRef) return;
 
     try {
@@ -126,7 +127,20 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         const newBillRef = doc(billsCollection); // Create a new ref for the bill
         transaction.set(newBillRef, bill);
 
-        // 2. Reset the table
+        // 2. If membership payment, update customer's remaining hours
+        if (customerId && hoursToDeduct && hoursToDeduct > 0) {
+            const customerRef = doc(firestore, 'customers', customerId);
+            const customerDoc = await transaction.get(customerRef);
+            if (!customerDoc.exists()) {
+                throw "Customer not found.";
+            }
+            const currentHours = customerDoc.data().remainingHours || 0;
+            const newRemainingHours = currentHours - hoursToDeduct;
+            transaction.update(customerRef, { remainingHours: newRemainingHours });
+        }
+
+
+        // 3. Reset the table
         transaction.update(tableRef, {
           status: 'available',
           elapsedTime: 0,
@@ -287,3 +301,5 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     </>
   );
 }
+
+    
