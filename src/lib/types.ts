@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'admin' | 'staff';
 
 export interface User {
@@ -35,6 +36,8 @@ export interface BilliardTable {
   lastPausedTime?: number | null;
   createdAt?: number;
   currentSegmentStartTime?: number;
+  customerName?: string | null;
+  customerId?: string | null;
 }
 
 export interface Membership {
@@ -82,4 +85,11 @@ export interface Bill {
     };
 }
 
+export interface Payment {
+    id: string;
+    customerId: string;
+    paymentDate: string; // ISO 8601 string
+    amount: number;
+    staffId: string;
+}
     
