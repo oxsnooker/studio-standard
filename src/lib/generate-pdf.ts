@@ -21,92 +21,83 @@ export function generateBillPdf(bill: Omit<Bill, 'id'>, tableName: string, elaps
 
   doc.setFontSize(16);
   doc.setFont('helvetica', 'normal');
-  doc.text(tableName, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+  doc.text(`Table: ${tableName}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
   
   let finalY = 40;
 
-  // Customer Details
-  doc.autoTable({
-    startY: finalY,
-    head: [['Customer Details']],
-    body: [
-        [{ content: 'Payment Method:', styles: { fontStyle: 'bold' } }, bill.paymentMethod, { content: 'Billing Date:', styles: { fontStyle: 'bold' } }, format(new Date(bill.billDate), 'Pp')],
-    ],
-    theme: 'striped',
-    headStyles: { fillColor: [38, 166, 154],halign: 'center' }, // Teal
-    columnStyles: {
-        0: { fontStyle: 'bold' },
-        2: { fontStyle: 'bold' },
-    }
-  });
-  finalY = doc.autoTable.previous.finalY + 10;
-
-
-  // Purchased Items
-  if (bill.sessionItems && bill.sessionItems.length > 0) {
-    doc.autoTable({
-        startY: finalY,
-        head: [['Purchased Items']],
-        body: [],
-        theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185], halign: 'center' }, // Blue
-        didDrawPage: (data) => {
-            finalY = data.cursor.y;
-        }
-    });
-
-    const itemBody = bill.sessionItems.map(item => [
-      item.product.name,
-      item.quantity,
-      `Rs ${item.product.price.toFixed(2)}`,
-      `Rs ${(item.product.price * item.quantity).toFixed(2)}`,
-    ]);
-
-    doc.autoTable({
-      startY: finalY,
-      head: [['Item', 'Quantity', 'Price per Unit (Rs)', 'Total Price (Rs)']],
-      body: itemBody,
-      theme: 'grid',
-    });
-    finalY = doc.autoTable.previous.finalY + 10;
-  }
-
-  // Timer Details
   const sessionEndTime = new Date(bill.billDate);
   const sessionStartTime = new Date(sessionEndTime.getTime() - elapsedTime * 1000);
 
+  // Session & Payment Details
   doc.autoTable({
     startY: finalY,
-    head: [['Timer Details']],
+    head: [['Session & Payment Details']],
     body: [
-        ['Started At', format(sessionStartTime, 'Pp'), 'Ended At', format(sessionEndTime, 'Pp')],
-        ['Timer Duration', formatTime(elapsedTime), 'Timer Price (Rs)', `Rs ${bill.tableBill.toFixed(2)}`],
+        ['Billing Date', format(sessionEndTime, 'PPP')],
+        ['Start Time', format(sessionStartTime, 'p')],
+        ['End Time', format(sessionEndTime, 'p')],
+        ['Total Duration', formatTime(elapsedTime)],
+        ['Payment Method', bill.paymentMethod.toUpperCase()],
     ],
-    theme: 'striped',
-    headStyles: { fillColor: [243, 156, 18], halign: 'center' }, // Orange
+    theme: 'grid',
+    headStyles: { fillColor: [38, 166, 154], halign: 'center' }, // Teal
     columnStyles: {
         0: { fontStyle: 'bold' },
-        2: { fontStyle: 'bold' },
     }
   });
   finalY = doc.autoTable.previous.finalY + 10;
 
-  // Summary
+
+  // Items Breakdown (Table & Products)
   doc.autoTable({
     startY: finalY,
-    head: [['Summary']],
+    head: [['Description', 'Rate / Price', 'Qty / Time', 'Amount (INR)']],
     body: [
-      ['Total Amount (Rs)', `Rs ${bill.totalAmount.toFixed(2)}`],
+        // Table Cost Row
+        [
+            'Table Time', 
+            `₹${(bill.tableBill / (elapsedTime / 3600)).toFixed(2)} / hr`, // Calculate hourly rate
+            formatTime(elapsedTime), 
+            `₹${bill.tableBill.toFixed(2)}`
+        ],
+        // Product Cost Rows
+        ...bill.sessionItems.map(item => [
+            item.product.name,
+            `₹${item.product.price.toFixed(2)}`,
+            item.quantity,
+            `₹${(item.product.price * item.quantity).toFixed(2)}`
+        ]),
     ],
-    theme: 'striped',
-    headStyles: { fillColor: [192, 57, 43], halign: 'center' }, // Red
-    columnStyles: {
-        0: { fontStyle: 'bold', halign: 'right' },
-        1: { fontStyle: 'bold', halign: 'left' }
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] }, // Blue
+    foot: [
+        [
+            { content: 'Total Amount', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: `₹${bill.totalAmount.toFixed(2)}`, styles: { fontStyle: 'bold' } }
+        ],
+        [
+            { content: 'Amount Paid', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: `₹${bill.amountPaid.toFixed(2)}`, styles: { fontStyle: 'bold' } }
+        ],
+        [
+            { content: 'Balance', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: `₹${(bill.totalAmount - bill.amountPaid).toFixed(2)}`, styles: { fontStyle: 'bold' } }
+        ]
+    ],
+    footStyles: {
+        fillColor: [236, 240, 241], // Light gray
+        textColor: [44, 62, 80] // Dark text
     }
   });
+  finalY = doc.autoTable.previous.finalY + 15;
+
+
+  // Thank you note
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Thank you for playing at THE OX SNOOKER!', doc.internal.pageSize.getWidth() / 2, finalY, { align: 'center' });
 
 
   // Save the PDF
-  doc.save(`Invoice-${tableName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  doc.save(`Invoice-${tableName}-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`);
 }
