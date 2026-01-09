@@ -14,15 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { BilliardTable, SessionItem, Bill } from '@/lib/types';
-import { Hourglass, Pause, Play, Square, UtensilsCrossed, Trash2, FileText } from 'lucide-react';
+import { Hourglass, Pause, Play, UtensilsCrossed, Trash2, FileText } from 'lucide-react';
 import { EndSessionDialog } from './end-session-dialog';
 import { AddItemDialog } from './add-item-dialog';
-import { doc, collection, runTransaction, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
-import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, runTransaction } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { generateBillPdf } from '@/lib/generate-pdf';
 
 interface TableCardProps {
   table: BilliardTable;
@@ -117,19 +118,14 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     setEndSessionOpen(true);
   };
   
-  const handleSessionEnd = async (bill: Omit<Bill, 'id'>) => {
+  const handleSessionEnd = async (bill: Omit<Bill, 'id'>, tableName: string) => {
     if (!firestore || !tableRef) return;
 
     try {
       await runTransaction(firestore, async (transaction) => {
-        // --- All reads are done, now perform writes ---
-
-        // 1. Save the bill
-        const billsCollection = collection(firestore, 'bills');
-        const newBillRef = doc(billsCollection); // Create a new ref for the bill
+        const newBillRef = doc(collection(firestore, 'bills'));
         transaction.set(newBillRef, bill);
 
-        // 2. Reset the table
         transaction.update(tableRef, {
           status: 'available',
           elapsedTime: 0,
@@ -139,9 +135,12 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         });
       });
 
+      // Generate and download PDF after transaction is successful
+      generateBillPdf(bill, tableName, elapsedTime);
+
       toast({
         title: "Session Completed",
-        description: `Bill for ${table.name} has been finalized.`,
+        description: `Bill for ${tableName} has been finalized.`,
       });
 
       onSessionChange?.();

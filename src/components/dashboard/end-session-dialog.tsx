@@ -26,7 +26,7 @@ interface EndSessionDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
-  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
+  onSessionEnd: (bill: Omit<Bill, 'id'>, tableName: string) => void;
 }
 
 export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
@@ -77,7 +77,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         notes: notes,
     };
 
-    onSessionEnd(bill);
+    onSessionEnd(bill, table.name);
     handleClose();
   }
 
