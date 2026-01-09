@@ -20,13 +20,14 @@ import { Separator } from '../ui/separator';
 import { useUser } from '@/firebase';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 
 interface EndSessionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   table: BilliardTable;
   elapsedTime: number;
-  onSessionEnd: (bill: Omit<Bill, 'id'>) => void;
+  onSessionEnd: (bill: Omit<Bill, 'id'>, generatePdf: boolean) => void;
 }
 
 export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onSessionEnd }: EndSessionDialogProps) {
@@ -35,6 +36,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
   const { toast } = useToast();
   const { user } = useUser();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash');
+  const [shouldGeneratePdf, setShouldGeneratePdf] = useState(true);
   
 
   const tableBill = useMemo(() => (elapsedTime / 3600) * table.hourlyRate, [elapsedTime, table.hourlyRate]);
@@ -80,7 +82,7 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
         duration: elapsedTime,
     };
 
-    onSessionEnd(bill);
+    onSessionEnd(bill, shouldGeneratePdf);
     handleClose();
   }
 
@@ -172,11 +174,20 @@ export function EndSessionDialog({ isOpen, onOpenChange, table, elapsedTime, onS
               {isPending ? 'Generating...' : 'Suggest Notes with AI'}
             </Button>
           </div>
+          
+          <div className="flex items-center space-x-2 pt-4">
+            <Switch
+                id="download-bill"
+                checked={shouldGeneratePdf}
+                onCheckedChange={setShouldGeneratePdf}
+            />
+            <Label htmlFor="download-bill">Download PDF Bill</Label>
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={handleClose} variant="secondary">Cancel</Button>
           <Button onClick={handleConfirmPayment}>
-            <Download className="mr-2 h-4 w-4" /> End & Download Bill
+            End Session
           </Button>
         </DialogFooter>
       </DialogContent>

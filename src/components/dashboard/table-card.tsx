@@ -122,14 +122,15 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
     setEndSessionOpen(true);
   };
   
-  const handleSessionEnd = async (billData: Omit<Bill, 'id'>) => {
+  const handleSessionEnd = async (billData: Omit<Bill, 'id'>, generatePdf: boolean) => {
     if (!firestore || !tableRef) return;
 
     try {
-      let newBillRef: DocumentReference;
+      let finalBill: Bill;
       await runTransaction(firestore, async (transaction) => {
-        newBillRef = doc(collection(firestore, 'bills'));
-        transaction.set(newBillRef, { ...billData, id: newBillRef.id });
+        const newBillRef = doc(collection(firestore, 'bills'));
+        finalBill = { ...billData, id: newBillRef.id };
+        transaction.set(newBillRef, finalBill);
 
         transaction.update(tableRef, {
           status: 'available',
@@ -141,13 +142,14 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         });
       });
 
-      // After transaction is successful, generate and download PDF
-      const finalBill: Bill = { ...billData, id: newBillRef!.id };
-      generateBillPdf(finalBill, table.name);
+      if (generatePdf) {
+          generateBillPdf(finalBill!, table.name);
+      }
+      
 
       toast({
         title: "Session Completed",
-        description: `Bill for ${table.name} has been finalized and downloaded.`,
+        description: `Bill for ${table.name} has been finalized.`,
       });
 
       onSessionChange?.();
