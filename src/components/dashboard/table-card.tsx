@@ -53,11 +53,12 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (table.status === 'in-use' && table.currentSegmentStartTime) {
+    if (table.status === 'in-use') {
         const calculateAndSetElapsedTime = () => {
             const now = Date.now();
-            const elapsedSinceStart = Math.floor((now - (table.currentSegmentStartTime || now)) / 1000);
-            setElapsedTime((table.elapsedTime || 0) + elapsedSinceStart);
+            // Always calculate from the original start time and add previously stored elapsed time from pauses.
+            const elapsedSinceCurrentSegmentStart = table.currentSegmentStartTime ? Math.floor((now - table.currentSegmentStartTime) / 1000) : 0;
+            setElapsedTime((table.elapsedTime || 0) + elapsedSinceCurrentSegmentStart);
         };
         
         calculateAndSetElapsedTime();
@@ -67,6 +68,7 @@ export function TableCard({ table, onSessionChange }: TableCardProps) {
         }, 1000);
 
     } else {
+        // When not in-use, just show the stored elapsed time.
         setElapsedTime(table.elapsedTime || 0);
     }
 
