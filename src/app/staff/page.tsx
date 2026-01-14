@@ -3,8 +3,11 @@
 import { useState, useMemo } from 'react';
 import type { BilliardTable } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { TableCard } from '@/components/dashboard/table-card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 
 export default function StaffPage() {
   const firestore = useFirestore();
@@ -33,6 +36,12 @@ export default function StaffPage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-3xl md:text-4xl">THE OX SNOOKER</h1>
+        <Button asChild variant="outline">
+          <Link href="http://balance.theoxsnooker.in" target="_blank">
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Balance
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
