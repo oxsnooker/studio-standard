@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CircleUser, Menu, LogOut } from 'lucide-react';
+import { CircleUser, Menu, LogOut, ExternalLink } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -57,7 +57,12 @@ export function DashboardHeader() {
           <DropdownMenuItem asChild>
             <Link href="/dashboard/settings">Settings</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="http://salary.theoxsnooker.in" target="_blank">
+                Salary
+                <ExternalLink className="ml-auto h-3 w-3" />
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
