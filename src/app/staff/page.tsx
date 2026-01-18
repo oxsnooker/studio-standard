@@ -37,7 +37,7 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <h1 className="font-headline text-3xl md:text-4xl">THE OX SNOOKER</h1>
         <Button asChild variant="outline">
-          <Link href="http://balance.theoxsnooker.in" target="_blank">
+          <Link href="https://balance-standard.vercel.app/login" target="_blank">
             <ExternalLink className="mr-2 h-4 w-4" />
             Balance
           </Link>
