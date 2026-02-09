@@ -3,12 +3,13 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
-import { DollarSign, CreditCard, Utensils, Hourglass, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Download, DollarSign, CreditCard, Utensils, Hourglass, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, startOfDay, endOfDay, parseISO, startOfMonth, endOfMonth, getDaysInMonth, addDays } from 'date-fns';
+import { format, startOfDay, endOfDay, parseISO, startOfMonth, endOfMonth, getDaysInMonth, addDays, subDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Bill } from '@/lib/types';
+import type { Bill, BilliardTable } from '@/lib/types';
 import {
   ChartContainer,
   ChartTooltip,
@@ -17,6 +18,8 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Skeleton } from '@/components/ui/skeleton';
+import { generateWeeklyReportPdf } from '@/lib/generate-weekly-report-pdf';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface ReportData {
@@ -48,6 +51,7 @@ export default function ReportsPage() {
   const [date, setDate] = useState<Date>(new Date());
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   // Daily bills query
   const billsQuery = useMemoFirebase(() => {
@@ -76,6 +80,27 @@ export default function ReportsPage() {
   }, [firestore, selectedMonth]);
 
   const { data: monthlyBills, isLoading: isLoadingMonthly } = useCollection<Bill>(monthlyBillsQuery);
+
+  // Query for last week's bills for the PDF report
+  const lastWeekBillsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const endDate = endOfDay(new Date());
+    const startDate = startOfDay(subDays(endDate, 7));
+    return query(
+        collection(firestore, 'bills'),
+        where('billDate', '>=', startDate.toISOString()),
+        where('billDate', '<=', endDate.toISOString())
+    );
+  }, [firestore]);
+  const { data: lastWeekBills, isLoading: isLoadingLastWeekBills } = useCollection<Bill>(lastWeekBillsQuery);
+
+  // Query for all tables to get their names for the report
+  const tablesQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'tables');
+  }, [firestore]);
+  const { data: tables, isLoading: isLoadingTables } = useCollection<BilliardTable>(tablesQuery);
+
 
   const reportData: ReportData | null = useMemo(() => {
     if (!bills) return null;
@@ -155,12 +180,36 @@ export default function ReportsPage() {
     }
   };
 
+  const handleDownloadWeeklyReport = () => {
+    if (!lastWeekBills || !tables) {
+      toast({
+        variant: "destructive",
+        title: "Cannot generate report",
+        description: "The data for the weekly report is not available yet. Please try again in a moment.",
+      });
+      return;
+    }
+    if (lastWeekBills.length === 0) {
+      toast({
+        title: "No data to report",
+        description: "There were no bookings in the last 7 days.",
+      });
+      return;
+    }
+    generateWeeklyReportPdf(lastWeekBills, tables);
+  };
+
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="font-headline text-3xl md:text-4xl">Revenue Reports</h1>
-        <div className="flex gap-2">
-            <div className="w-full md:w-[280px]">
+        <div className="flex items-center gap-2">
+            <Button onClick={handleDownloadWeeklyReport} disabled={isLoadingLastWeekBills || isLoadingTables}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Weekly PDF
+            </Button>
+            <div className="w-full md:w-[180px]">
                 <Input
                     type="date"
                     value={format(date, 'yyyy-MM-dd')}
