@@ -34,7 +34,9 @@ export const generateWeeklyReportPdf = (bills: Bill[], tables: BilliardTable[]) 
 
   const head = [['Table', 'Start Time', 'End Time', 'Duration', 'Table Cost', 'Snacks Cost', 'Total']];
   
-  const body = bills.map(bill => {
+  const sortedBills = [...bills].sort((a, b) => b.startTime - a.startTime);
+  
+  const body = sortedBills.map(bill => {
     const tableName = tableMap.get(bill.sessionId) || 'Unknown';
     return [
       tableName,
