@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calculator as CalculatorIcon, X, GripHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -65,55 +65,111 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
     };
   }, [isDragging]);
 
-  const handleNumber = (num: string) => {
+  const handleNumber = useCallback((num: string) => {
     setDisplay((prev) => {
       if (prev === '0' || prev === 'Error') return num;
+      if (num === '.' && prev.includes('.')) return prev;
       return prev + num;
     });
-  };
+  }, []);
 
-  const handleOperator = (op: string) => {
-    if (display === 'Error') return;
-    
-    // If user clicks operator multiple times without entering a number, swap operator
-    if (display === '0' && equation.length > 0) {
-      setEquation(prev => prev.trim().slice(0, -1).trim() + ' ' + op + ' ');
-      return;
-    }
-    
-    setEquation(prev => prev + display + ' ' + op + ' ');
-    setDisplay('0');
-  };
+  const handleOperator = useCallback((op: string) => {
+    setDisplay((currentDisplay) => {
+      if (currentDisplay === 'Error') return currentDisplay;
+      
+      setEquation(prev => {
+        // If user clicks operator multiple times without entering a number, swap operator
+        if (currentDisplay === '0' && prev.length > 0) {
+          return prev.trim().slice(0, -1).trim() + ' ' + op + ' ';
+        }
+        return prev + currentDisplay + ' ' + op + ' ';
+      });
+      
+      return '0';
+    });
+  }, []);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setDisplay('0');
     setEquation('');
-  };
+  }, []);
 
-  const handleCalculate = () => {
-    if (display === 'Error') return;
-    try {
-      const fullExpression = (equation + display).trim();
-      if (!fullExpression) return;
+  const handleCalculate = useCallback(() => {
+    setDisplay((currentDisplay) => {
+      if (currentDisplay === 'Error') return currentDisplay;
+      
+      setEquation(currentEquation => {
+        try {
+          const fullExpression = (currentEquation + currentDisplay).trim();
+          if (!fullExpression) return currentEquation;
 
-      // Filter to allowed characters for safety
-      const sanitized = fullExpression.replace(/[^-0-9+*/.]/g, '');
+          // Filter to allowed characters for safety
+          const sanitized = fullExpression.replace(/[^-0-9+*/.]/g, '');
+          
+          // Use eval-like approach with Function for basic math
+          const result = new Function(`return ${sanitized}`)();
+          
+          if (result === Infinity || isNaN(result)) {
+            setDisplay('Error');
+          } else {
+            // Handle precision and convert to string
+            const formattedResult = Number(Number(result).toPrecision(12)).toString();
+            setDisplay(formattedResult);
+          }
+          return '';
+        } catch (e) {
+          setDisplay('Error');
+          return '';
+        }
+      });
       
-      // Use eval-like approach with Function for basic math
-      const result = new Function(`return ${sanitized}`)();
-      
-      if (result === Infinity || isNaN(result)) {
-        setDisplay('Error');
-      } else {
-        // Handle precision and convert to string
-        const formattedResult = Number(Number(result).toPrecision(12)).toString();
-        setDisplay(formattedResult);
+      return currentDisplay; // This is a bit tricky since setEquation side-effects setDisplay
+    });
+  }, []);
+
+  const handleBackspace = useCallback(() => {
+    setDisplay((prev) => {
+      if (prev === '0' || prev === 'Error' || prev.length === 0) return '0';
+      const next = prev.slice(0, -1);
+      return next === '' ? '0' : next;
+    });
+  }, []);
+
+  // Keyboard support
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Numbers
+      if (/[0-9]/.test(e.key)) {
+        handleNumber(e.key);
+      } 
+      // Operators
+      else if (['+', '-', '*', '/'].includes(e.key)) {
+        handleOperator(e.key === '*' ? '*' : e.key);
+      } 
+      // Calculate
+      else if (e.key === 'Enter' || e.key === '=') {
+        e.preventDefault();
+        handleCalculate();
+      } 
+      // Clear
+      else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+        handleClear();
+      } 
+      // Backspace
+      else if (e.key === 'Backspace') {
+        handleBackspace();
       }
-      setEquation('');
-    } catch (e) {
-      setDisplay('Error');
-    }
-  };
+      // Decimal
+      else if (e.key === '.') {
+        handleNumber('.');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleNumber, handleOperator, handleCalculate, handleClear, handleBackspace]);
 
   if (!isOpen) return null;
 
