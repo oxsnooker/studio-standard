@@ -74,7 +74,14 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
 
   const handleOperator = (op: string) => {
     if (display === 'Error') return;
-    setEquation(display + ' ' + op + ' ');
+    
+    // If user clicks operator multiple times without entering a number, swap operator
+    if (display === '0' && equation.length > 0) {
+      setEquation(prev => prev.trim().slice(0, -1).trim() + ' ' + op + ' ');
+      return;
+    }
+    
+    setEquation(prev => prev + display + ' ' + op + ' ');
     setDisplay('0');
   };
 
@@ -84,12 +91,24 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
   };
 
   const handleCalculate = () => {
-    if (display === 'Error' || !equation) return;
+    if (display === 'Error') return;
     try {
-      const expression = (equation + display).replace(/[^-0-9+*/.]/g, '');
-      const result = new Function(`return ${expression}`)();
-      const formattedResult = Number(Number(result).toFixed(8)).toString();
-      setDisplay(formattedResult);
+      const fullExpression = (equation + display).trim();
+      if (!fullExpression) return;
+
+      // Filter to allowed characters for safety
+      const sanitized = fullExpression.replace(/[^-0-9+*/.]/g, '');
+      
+      // Use eval-like approach with Function for basic math
+      const result = new Function(`return ${sanitized}`)();
+      
+      if (result === Infinity || isNaN(result)) {
+        setDisplay('Error');
+      } else {
+        // Handle precision and convert to string
+        const formattedResult = Number(Number(result).toPrecision(12)).toString();
+        setDisplay(formattedResult);
+      }
       setEquation('');
     } catch (e) {
       setDisplay('Error');
@@ -136,7 +155,7 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
 
       <div className="p-4 flex flex-col gap-4">
         <div className="bg-muted/80 p-4 rounded-lg text-right border shadow-inner">
-          <div className="text-xs text-muted-foreground h-4 overflow-hidden whitespace-nowrap font-mono">
+          <div className="text-xs text-muted-foreground h-4 overflow-x-auto whitespace-nowrap font-mono scrollbar-hide">
             {equation}
           </div>
           <div className="text-3xl font-mono font-bold truncate text-foreground">
