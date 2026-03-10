@@ -18,6 +18,15 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
   const dragStartPos = useRef({ x: 0, y: 0 });
   const calculatorRef = useRef<HTMLDivElement>(null);
 
+  // Use refs to keep track of state for the event listener without re-binding
+  const displayRef = useRef(display);
+  const equationRef = useRef(equation);
+
+  useEffect(() => {
+    displayRef.current = display;
+    equationRef.current = equation;
+  }, [display, equation]);
+
   // Initialize position to the top right area
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -74,19 +83,21 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
   }, []);
 
   const handleOperator = useCallback((op: string) => {
-    setDisplay((currentDisplay) => {
-      if (currentDisplay === 'Error') return currentDisplay;
-      
-      setEquation(prev => {
-        // If user clicks operator multiple times without entering a number, swap operator
-        if (currentDisplay === '0' && prev.length > 0) {
-          return prev.trim().slice(0, -1).trim() + ' ' + op + ' ';
-        }
-        return prev + currentDisplay + ' ' + op + ' ';
-      });
-      
-      return '0';
-    });
+    const currentDisplay = displayRef.current;
+    const currentEquation = equationRef.current;
+
+    if (currentDisplay === 'Error') return;
+    
+    let newEq = '';
+    if (currentDisplay === '0' && currentEquation.length > 0) {
+      // If user clicks operator multiple times without entering a number, swap operator
+      newEq = currentEquation.trim().slice(0, -1).trim() + ' ' + op + ' ';
+    } else {
+      newEq = currentEquation + currentDisplay + ' ' + op + ' ';
+    }
+    
+    setEquation(newEq);
+    setDisplay('0');
   }, []);
 
   const handleClear = useCallback(() => {
@@ -95,36 +106,33 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
   }, []);
 
   const handleCalculate = useCallback(() => {
-    setDisplay((currentDisplay) => {
-      if (currentDisplay === 'Error') return currentDisplay;
-      
-      setEquation(currentEquation => {
-        try {
-          const fullExpression = (currentEquation + currentDisplay).trim();
-          if (!fullExpression) return currentEquation;
+    const currentDisplay = displayRef.current;
+    const currentEquation = equationRef.current;
 
-          // Filter to allowed characters for safety
-          const sanitized = fullExpression.replace(/[^-0-9+*/.]/g, '');
-          
-          // Use eval-like approach with Function for basic math
-          const result = new Function(`return ${sanitized}`)();
-          
-          if (result === Infinity || isNaN(result)) {
-            setDisplay('Error');
-          } else {
-            // Handle precision and convert to string
-            const formattedResult = Number(Number(result).toPrecision(12)).toString();
-            setDisplay(formattedResult);
-          }
-          return '';
-        } catch (e) {
-          setDisplay('Error');
-          return '';
-        }
-      });
+    if (currentDisplay === 'Error') return;
+    
+    const fullExpression = (currentEquation + currentDisplay).trim();
+    if (!fullExpression) return;
+
+    try {
+      // Filter to allowed characters for safety
+      const sanitized = fullExpression.replace(/[^-0-9+*/.]/g, '');
       
-      return currentDisplay; // This is a bit tricky since setEquation side-effects setDisplay
-    });
+      // Use eval-like approach with Function for basic math
+      const result = new Function(`return ${sanitized}`)();
+      
+      if (result === Infinity || isNaN(result)) {
+        setDisplay('Error');
+      } else {
+        // Handle precision and convert to string
+        const formattedResult = Number(Number(result).toPrecision(12)).toString();
+        setDisplay(formattedResult);
+      }
+      setEquation('');
+    } catch (e) {
+      setDisplay('Error');
+      setEquation('');
+    }
   }, []);
 
   const handleBackspace = useCallback(() => {
@@ -140,13 +148,16 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent double triggers by checking if target is an input (unlikely here but good practice)
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
       // Numbers
       if (/[0-9]/.test(e.key)) {
         handleNumber(e.key);
       } 
       // Operators
       else if (['+', '-', '*', '/'].includes(e.key)) {
-        handleOperator(e.key === '*' ? '*' : e.key);
+        handleOperator(e.key);
       } 
       // Calculate
       else if (e.key === 'Enter' || e.key === '=') {
@@ -192,8 +203,8 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
         onMouseDown={handleMouseDown}
         className="flex items-center justify-between p-3 bg-muted/50 cursor-grab active:cursor-grabbing border-b"
       >
-        <div className="flex items-center gap-2 font-headline text-sm font-semibold">
-          <CalculatorIcon className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-2 font-headline text-sm font-semibold text-primary">
+          <CalculatorIcon className="h-4 w-4" />
           Calculator
         </div>
         <div className="flex items-center gap-2">
@@ -219,27 +230,27 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2">
-          <Button variant="outline" className="col-span-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20" onClick={handleClear}>Clear</Button>
+          <Button variant="outline" className="col-span-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 font-bold" onClick={handleClear}>Clear</Button>
           <Button variant="secondary" className="font-bold text-lg" onClick={() => handleOperator('/')}>÷</Button>
           <Button variant="secondary" className="font-bold text-lg" onClick={() => handleOperator('*')}>×</Button>
           
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('7')}>7</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('8')}>8</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('9')}>9</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('7')}>7</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('8')}>8</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('9')}>9</Button>
           <Button variant="secondary" className="font-bold text-lg" onClick={() => handleOperator('-')}>−</Button>
 
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('4')}>4</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('5')}>5</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('6')}>6</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('4')}>4</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('5')}>5</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('6')}>6</Button>
           <Button variant="secondary" className="font-bold text-lg" onClick={() => handleOperator('+')}>+</Button>
 
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('1')}>1</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('2')}>2</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('3')}>3</Button>
-          <Button variant="default" className="row-span-2 bg-primary text-xl font-bold" onClick={handleCalculate}>=</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('1')}>1</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('2')}>2</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('3')}>3</Button>
+          <Button variant="default" className="row-span-2 bg-primary text-xl font-bold shadow-md hover:shadow-lg transition-shadow" onClick={handleCalculate}>=</Button>
 
-          <Button variant="outline" size="lg" className="col-span-2 text-lg" onClick={() => handleNumber('0')}>0</Button>
-          <Button variant="outline" size="lg" className="text-lg" onClick={() => handleNumber('.')}>.</Button>
+          <Button variant="outline" size="lg" className="col-span-2 text-lg font-semibold" onClick={() => handleNumber('0')}>0</Button>
+          <Button variant="outline" size="lg" className="text-lg font-semibold" onClick={() => handleNumber('.')}>.</Button>
         </div>
       </div>
     </div>
