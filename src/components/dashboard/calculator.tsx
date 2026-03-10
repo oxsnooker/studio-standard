@@ -205,7 +205,7 @@ export function Calculator({ isOpen, onOpenChange }: CalculatorProps) {
       >
         <div className="flex items-center gap-2 font-headline text-sm font-semibold text-primary">
           <CalculatorIcon className="h-4 w-4" />
-          Calculator
+          OX calculator
         </div>
         <div className="flex items-center gap-2">
           <GripHorizontal className="h-4 w-4 text-muted-foreground/30" />

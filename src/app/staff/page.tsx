@@ -41,7 +41,7 @@ export default function StaffPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setCalculatorOpen(true)}>
             <CalculatorIcon className="mr-2 h-4 w-4" />
-            Calculator
+            OX calculator
           </Button>
           <Button asChild variant="outline">
             <Link href="https://balance-standard.vercel.app/login" target="_blank">
